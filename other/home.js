@@ -2,7 +2,7 @@
 
 // ---- Edit these paths to match where your pages live ----
 const LINKS = {
-    player:   './index.html',          // main webPod player (use ./webpod.html if that's your player file)
+    player:   './webpod.html',          // main webPod player (use ./webpod.html if that's your player file)
     captions: './tools/captions.html', // Caption Studio (Lyric Maker)
     sync:     './tools/captionsync.html', // SyncMaster
     manager:  './other/manager.html'   // Backup / ZIP manager
