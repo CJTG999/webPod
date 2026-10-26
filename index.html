@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="./other/favicon.png">
+    <title>webPod — Your Music, Retro Style</title>
+    <meta name="description" content="webPod is a browser-based retro iPod with synced lyrics, an EQ, and caption-making tools.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./other/home.css">
+</head>
+<body>
+    <div class="bg-glow bg-glow-a"></div>
+    <div class="bg-glow bg-glow-b"></div>
+
+    <!-- NAV -->
+    <header class="nav">
+        <a href="#top" class="brand">
+            <i class="fa-solid fa-podcast"></i>
+            <span class="brand-text">webPod</span>
+            <span class="pill">v1</span>
+        </a>
+        <nav class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#apps">Apps</a>
+            <a href="#how">How it works</a>
+            <a href="#keys">Controls</a>
+            <a href="#" data-link="player" class="btn btn-small btn-primary">Launch <i class="fa-solid fa-arrow-right"></i></a>
+        </nav>
+    </header>
+
+    <main id="top">
+        <!-- HERO -->
+        <section class="hero">
+            <div class="hero-copy reveal">
+                <span class="eyebrow"><i class="fa-solid fa-bolt"></i> Runs 100% in your browser</span>
+                <h1>Your music.<br><span class="grad">Retro soul.</span></h1>
+                <p class="lead">
+                    webPod is a retro-style music player with a click wheel, glowing LCD, synced lyrics,
+                    a built-in equalizer, and tools to make your own captions. Drop in your songs and they're
+                    saved right in your browser.
+                </p>
+                <div class="cta-row">
+                    <a href="#" data-link="player" class="btn btn-primary"><i class="fa-solid fa-play"></i> Open webPod</a>
+                    <a href="#" data-link="captions" class="btn btn-ghost"><i class="fa-solid fa-closed-captioning"></i> Make Captions</a>
+                </div>
+                <div class="stats">
+                    <div><b data-count="5">0</b><span>LCD themes</span></div>
+                    <div><b data-count="5">0</b><span>EQ presets</span></div>
+                    <div><b data-count="0">0</b><span>Accounts needed</span></div>
+                </div>
+            </div>
+
+            <!-- Interactive demo iPod -->
+            <div class="hero-device reveal">
+                <div id="ipod" class="ipod theme-classic">
+                    <div id="lcd" class="lcd theme-classic">
+                        <div class="scanlines"></div>
+                        <div class="lcd-status">
+                            <div><i id="lcdPlay" class="fa-solid fa-pause"></i> <span class="lcd-brand">WEBPOD V1</span></div>
+                            <div class="lcd-icons">
+                                <i class="fa-solid fa-sliders"></i>
+                                <i class="fa-solid fa-repeat"></i>
+                                <i class="fa-solid fa-battery-three-quarters"></i>
+                            </div>
+                        </div>
+                        <canvas id="vis"></canvas>
+                        <div class="lcd-meta">
+                            <h3 id="lcdTitle">Welcome</h3>
+                            <p id="lcdArtist">Press play</p>
+                        </div>
+                        <div id="lcdCaption" class="lcd-caption"></div>
+                        <div class="lcd-time"><span id="tCur">00:00</span><span id="tDur">03:00</span></div>
+                        <div class="lcd-bar" id="bar"><div id="barFill"></div></div>
+                    </div>
+
+                    <div class="wheel">
+                        <button class="w-menu" data-act="menu" title="Menu (↑)">MENU</button>
+                        <button class="w-next" data-act="next" title="Next (→)"><i class="fa-solid fa-forward-step"></i></button>
+                        <button class="w-play" data-act="play" title="Play / Pause (↓)"><i class="fa-solid fa-play"></i><i class="fa-solid fa-pause"></i></button>
+                        <button class="w-prev" data-act="prev" title="Previous (←)"><i class="fa-solid fa-backward-step"></i></button>
+                        <button class="w-center" data-act="center" title="Select (Space)"><span></span></button>
+                    </div>
+                </div>
+
+                <div class="theme-picker" role="group" aria-label="LCD theme">
+                    <span>Theme</span>
+                    <button class="dot" data-theme="theme-classic" style="--c:#92b08a" title="Classic"></button>
+                    <button class="dot" data-theme="theme-green" style="--c:#33ff33" title="Matrix Green"></button>
+                    <button class="dot" data-theme="theme-blue" style="--c:#4cd9e0" title="Ice Blue"></button>
+                    <button class="dot" data-theme="theme-amber" style="--c:#ffb000" title="Amber"></button>
+                    <button class="dot" data-theme="theme-pink" style="--c:#ff2a8d" title="Cyberpunk Pink"></button>
+                </div>
+                <p class="hint">This is a demo — try the wheel, your arrow keys, or pick a theme.</p>
+            </div>
+        </section>
+
+        <!-- MARQUEE -->
+        <div class="marquee" aria-hidden="true">
+            <div class="marquee-track">
+                <span>SYNCED LYRICS</span><i class="fa-solid fa-circle"></i>
+                <span>5-BAND EQ</span><i class="fa-solid fa-circle"></i>
+                <span>BASS BOOST</span><i class="fa-solid fa-circle"></i>
+                <span>LIVE VISUALIZER</span><i class="fa-solid fa-circle"></i>
+                <span>SRT &amp; LRC</span><i class="fa-solid fa-circle"></i>
+                <span>OFFLINE LIBRARY</span><i class="fa-solid fa-circle"></i>
+                <span>MOBILE PWA</span><i class="fa-solid fa-circle"></i>
+                <span>ZIP BACKUPS</span><i class="fa-solid fa-circle"></i>
+                <span>SYNCED LYRICS</span><i class="fa-solid fa-circle"></i>
+                <span>5-BAND EQ</span><i class="fa-solid fa-circle"></i>
+                <span>BASS BOOST</span><i class="fa-solid fa-circle"></i>
+                <span>LIVE VISUALIZER</span><i class="fa-solid fa-circle"></i>
+                <span>SRT &amp; LRC</span><i class="fa-solid fa-circle"></i>
+                <span>OFFLINE LIBRARY</span><i class="fa-solid fa-circle"></i>
+                <span>MOBILE PWA</span><i class="fa-solid fa-circle"></i>
+                <span>ZIP BACKUPS</span><i class="fa-solid fa-circle"></i>
+            </div>
+        </div>
+
+        <!-- FEATURES -->
+        <section id="features" class="section">
+            <div class="section-head reveal">
+                <span class="eyebrow">Features</span>
+                <h2>Everything a pocket player needs</h2>
+                <p>A nostalgic shell with modern guts: Web Audio DSP, IndexedDB storage, and live lyric sync.</p>
+            </div>
+
+            <div class="filters reveal" id="featureFilters">
+                <button class="chip active" data-filter="all">All</button>
+                <button class="chip" data-filter="player">Player</button>
+                <button class="chip" data-filter="lyrics">Lyrics</button>
+                <button class="chip" data-filter="audio">Audio</button>
+                <button class="chip" data-filter="library">Library</button>
+            </div>
+
+            <div class="grid" id="featureGrid"></div>
+        </section>
+
+        <!-- APPS / PAGES -->
+        <section id="apps" class="section">
+            <div class="section-head reveal">
+                <span class="eyebrow">The Toolkit</span>
+                <h2>Four pages, one ecosystem</h2>
+                <p>Everything shares the same browser storage, so your songs and captions follow you between tools.</p>
+            </div>
+            <div class="apps" id="appGrid"></div>
+        </section>
+
+        <!-- HOW IT WORKS -->
+        <section id="how" class="section">
+            <div class="section-head reveal">
+                <span class="eyebrow">How it works</span>
+                <h2>From file to singalong in four steps</h2>
+            </div>
+            <ol class="steps">
+                <li class="reveal"><span class="num">1</span><h4>Drop your music</h4><p>Upload MP3, WAV, or OGG files. Titles and artists are read from ID3 tags automatically.</p></li>
+                <li class="reveal"><span class="num">2</span><h4>Get lyrics</h4><p>Pull synced lyrics from LRCLIB, or attach / paste your own .SRT and .LRC files.</p></li>
+                <li class="reveal"><span class="num">3</span><h4>Tune it</h4><p>Dial in the EQ, bass boost, playback speed, and nudge caption timing with offset and rate sliders.</p></li>
+                <li class="reveal"><span class="num">4</span><h4>Back it up</h4><p>Export your whole library, lyrics and offsets included, as a single ZIP and restore it anywhere.</p></li>
+            </ol>
+        </section>
+
+        <!-- CONTROLS -->
+        <section id="keys" class="section">
+            <div class="section-head reveal">
+                <span class="eyebrow">Controls</span>
+                <h2>Keyboard friendly</h2>
+                <p>The arrow keys map to the click wheel, just like the real thing.</p>
+            </div>
+            <div class="keys reveal">
+                <div class="key-card"><kbd>↑</kbd><span>Menu / Library</span></div>
+                <div class="key-card"><kbd>↓</kbd><span>Play / Pause</span></div>
+                <div class="key-card"><kbd>←</kbd><span>Previous / Restart</span></div>
+                <div class="key-card"><kbd>→</kbd><span>Next track</span></div>
+                <div class="key-card"><kbd>Space</kbd><span>Select</span></div>
+            </div>
+        </section>
+
+        <!-- FINAL CTA -->
+        <section class="section final reveal">
+            <h2>Ready to press play?</h2>
+            <p>No sign-up, no install. Your library stays on your device.</p>
+            <div class="cta-row center">
+                <a href="#" data-link="player" class="btn btn-primary"><i class="fa-solid fa-play"></i> Launch webPod</a>
+                <a href="#" data-link="sync" class="btn btn-ghost"><i class="fa-solid fa-sliders"></i> Sync existing lyrics</a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="brand"><i class="fa-solid fa-podcast"></i><span class="brand-text">webPod</span></div>
+        <div class="foot-links">
+            <a href="#" data-link="player">Player</a>
+            <a href="#" data-link="captions">Caption Studio</a>
+            <a href="#" data-link="sync">SyncMaster</a>
+            <a href="#" data-link="manager">Backup Manager</a>
+            <a href="https://lrclib.net/" target="_blank" rel="noopener">LRCLIB</a>
+        </div>
+        <p>Lyrics powered by LRCLIB. Your files never leave your browser.</p>
+    </footer>
+
+    <script src="./other/home.js"></script>
+</body>
+</html>

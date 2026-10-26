@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lyric & Caption Sync Master</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              accent: '#06b6d4',
+              neon: '#22c55e'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Inter Font -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+      color: #f3f4f6;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+    .glass-panel {
+      background: rgba(17, 24, 39, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glow-effect {
+      box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.3);
+    }
+    .glow-neon {
+      box-shadow: 0 0 20px -3px rgba(34, 197, 94, 0.4);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-gray-800/80 glass-panel sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-accent flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+          <i class="fa-solid fa-sliders text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
+            SyncMaster <span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-accent border border-brand-500/30 font-medium">Pro</span>
+          </h1>
+          <p class="text-xs text-gray-400 hidden sm:block">Audio Caption & Lyric Retiming Studio</p>
+        </div>
+      </div>
+
+      <!-- Controls Right -->
+      <div class="flex items-center space-x-3">
+        <button id="btnShortcutsModal" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition flex items-center space-x-2">
+          <i class="fa-solid fa-keyboard text-brand-accent"></i>
+          <span class="hidden md:inline">Hotkeys</span>
+        </button>
+        <button id="btnResetAll" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-800/50 transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>Reset</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full space-y-6">
+
+    <!-- TOP SECTION: Upload & Import Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="importSection">
+      
+      <!-- Audio File Input Card -->
+      <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between space-y-4 relative overflow-hidden group">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2.5">
+            <span class="w-7 h-7 rounded-lg bg-brand-500/20 flex items-center justify-center text-brand-accent text-sm">
+              <i class="fa-solid fa-music"></i>
+            </span>
+            <h2 class="font-semibold text-gray-200">1. Audio Source</h2>
+          </div>
+          <span id="audioStatusBadge" class="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-400 border border-gray-700">No Audio</span>
+        </div>
+
+        <div id="dropZoneAudio" class="border-2 border-dashed border-gray-700 hover:border-brand-500/60 rounded-xl p-6 text-center cursor-pointer transition bg-gray-900/40 hover:bg-gray-900/80 flex flex-col items-center justify-center min-h-[140px]">
+          <input type="file" id="audioFileInput" accept="audio/*" class="hidden">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-gray-500 mb-2 group-hover:scale-110 transition duration-300"></i>
+          <p class="text-sm font-medium text-gray-300">Drop audio file or <span class="text-brand-accent underline">browse</span></p>
+          <p class="text-xs text-gray-500 mt-1">MP3, WAV, OGG, M4A, FLAC</p>
+        </div>
+
+        <div id="audioFileNameDisplay" class="hidden text-xs text-brand-accent bg-brand-500/10 border border-brand-500/20 rounded-lg p-2.5 flex items-center justify-between">
+          <span class="truncate max-w-[85%]" id="audioFileNameText">audio.mp3</span>
+          <button id="btnClearAudio" class="text-gray-400 hover:text-red-400 transition ml-2">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Lyrics File Input Card -->
+      <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2.5">
+            <span class="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-sm">
+              <i class="fa-solid fa-file-lines"></i>
+            </span>
+            <h2 class="font-semibold text-gray-200">2. Lyrics / Captions Text</h2>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button id="btnTogglePaste" class="text-xs text-brand-accent hover:underline focus:outline-none">
+              Paste Text
+            </button>
+            <span id="lyricsStatusBadge" class="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-400 border border-gray-700">No Captions</span>
+          </div>
+        </div>
+
+        <!-- Drag File View -->
+        <div id="dropZoneLyrics" class="border-2 border-dashed border-gray-700 hover:border-emerald-500/60 rounded-xl p-6 text-center cursor-pointer transition bg-gray-900/40 hover:bg-gray-900/80 flex flex-col items-center justify-center min-h-[140px]">
+          <input type="file" id="lyricsFileInput" accept=".srt,.lrc,.txt" class="hidden">
+          <i class="fa-solid fa-file-arrow-up text-3xl text-gray-500 mb-2 transition duration-300"></i>
+          <p class="text-sm font-medium text-gray-300">Drop captions or <span class="text-emerald-400 underline">browse</span></p>
+          <p class="text-xs text-gray-500 mt-1">SRT, LRC, or Plain TXT (New line per lyric)</p>
+        </div>
+
+        <!-- Manual Paste Textarea (Hidden by default) -->
+        <div id="pasteContainer" class="hidden flex-col space-y-2">
+          <textarea id="rawLyricsTextarea" rows="4" placeholder="Paste lyrics or timestamps here (e.g. SRT, LRC or raw lines)..." class="w-full bg-gray-900/90 border border-gray-700 rounded-xl p-3 text-xs text-gray-200 focus:outline-none focus:border-emerald-500 resize-none mono"></textarea>
+          <div class="flex justify-end space-x-2">
+            <button id="btnCancelPaste" class="px-3 py-1 text-xs text-gray-400 hover:text-white">Cancel</button>
+            <button id="btnApplyPaste" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg transition">Load Lyrics</button>
+          </div>
+        </div>
+
+        <div id="lyricsFileNameDisplay" class="hidden text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 flex items-center justify-between">
+          <span class="truncate max-w-[85%]" id="lyricsFileNameText">lyrics.txt</span>
+          <button id="btnClearLyrics" class="text-gray-400 hover:text-red-400 transition ml-2">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN AUDIO PLAYER & WAVEFORM CONTROL PANEL -->
+    <div class="glass-panel rounded-2xl p-5 space-y-4">
+      
+      <!-- Top Audio Controls Row -->
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        
+        <!-- Play / Pause & Skip Buttons -->
+        <div class="flex items-center space-x-2">
+          <button id="btnSkipBack" title="Skip Back 5s (Left Arrow)" class="w-10 h-10 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 flex items-center justify-center transition active:scale-95">
+            <i class="fa-solid fa-rotate-left"></i>
+          </button>
+
+          <button id="btnPlayPause" title="Play/Pause (Space when focused or click)" class="h-12 px-6 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold flex items-center justify-center space-x-2 shadow-lg shadow-brand-500/30 transition active:scale-95">
+            <i id="playIcon" class="fa-solid fa-play"></i>
+            <span id="playText">Play</span>
+          </button>
+
+          <button id="btnSkipForward" title="Skip Forward 5s (Right Arrow)" class="w-10 h-10 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 flex items-center justify-center transition active:scale-95">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
+          
+          <button id="btnStop" title="Stop & Reset to 0" class="w-10 h-10 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 flex items-center justify-center transition active:scale-95">
+            <i class="fa-solid fa-stop"></i>
+          </button>
+        </div>
+
+        <!-- Clock Display -->
+        <div class="mono bg-gray-950/80 px-4 py-2 rounded-xl border border-gray-800 flex items-center space-x-2 shadow-inner">
+          <i class="fa-solid fa-clock text-brand-accent text-xs"></i>
+          <span id="currentTimeDisplay" class="text-xl font-bold text-brand-accent tracking-wider">00:00.000</span>
+          <span class="text-gray-600">/</span>
+          <span id="durationDisplay" class="text-sm font-medium text-gray-400">00:00.000</span>
+        </div>
+
+        <!-- Speed & Timing Options -->
+        <div class="flex items-center space-x-4">
+          <!-- Playback Speed -->
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-gray-400 font-medium">Speed:</span>
+            <select id="speedSelect" class="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-brand-500">
+              <option value="0.5">0.5x</option>
+              <option value="0.75">0.75x</option>
+              <option value="1" selected>1.0x (Normal)</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+            </select>
+          </div>
+
+          <!-- Timing Mode Switcher -->
+          <div class="flex items-center space-x-2 border-l border-gray-800 pl-4">
+            <span class="text-xs text-gray-400 font-medium">Mode:</span>
+            <div class="flex bg-gray-900 rounded-lg p-1 border border-gray-800">
+              <button id="modeAutoEnd" class="px-2.5 py-1 text-xs rounded-md font-medium transition bg-brand-600 text-white" title="Auto-end previous line when next starts">Continuous</button>
+              <button id="modeRange" class="px-2.5 py-1 text-xs rounded-md font-medium text-gray-400 hover:text-white transition" title="Tap once for Start, Tap again for End">Tap Range</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Waveform / Progress Slider Canvas -->
+      <div class="space-y-1.5">
+        <div class="relative w-full h-16 bg-gray-950 rounded-xl overflow-hidden border border-gray-800/80 group cursor-pointer" id="waveformContainer">
+          <canvas id="waveformCanvas" class="w-full h-full block"></canvas>
+          <!-- Playhead indicator -->
+          <div id="playhead" class="absolute top-0 bottom-0 w-0.5 bg-brand-accent shadow-[0_0_8px_#06b6d4] pointer-events-none transition-all duration-75" style="left: 0%;"></div>
+        </div>
+        <div class="flex justify-between items-center text-[10px] text-gray-500 mono px-1">
+          <span>00:00</span>
+          <span>Click waveform to scrub</span>
+          <span id="totalDurationText">00:00</span>
+        </div>
+      </div>
+
+      <!-- Hidden Audio Element -->
+      <audio id="audioElement" class="hidden" preload="auto"></audio>
+    </div>
+
+    <!-- RETIMING INTERACTIVE WORKSPACE GRID -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- LEFT / TOP PANEL: ACTIVE STAMPING HUB (5 COLS) -->
+      <div class="lg:col-span-5 space-y-4">
+        
+        <!-- Big Stamp Action Box -->
+        <div class="glass-panel rounded-2xl p-6 border-brand-500/30 glow-effect flex flex-col items-center justify-center text-center space-y-4 relative overflow-hidden">
+          <div class="absolute top-3 right-3">
+            <span id="rangeTapIndicator" class="hidden text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              Awaiting End Tap
+            </span>
+          </div>
+
+          <p class="text-xs font-semibold text-brand-accent tracking-widest uppercase">Current Active Line</p>
+          
+          <!-- Current Active Lyric Text Banner -->
+          <div class="min-h-[90px] flex items-center justify-center px-4 w-full">
+            <h3 id="currentLyricDisplay" class="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-snug">
+              Load lyrics and press Play to start timing
+            </h3>
+          </div>
+
+          <!-- Prominent Stamp Button -->
+          <button id="btnStamp" disabled class="w-full py-5 rounded-xl bg-gradient-to-r from-brand-600 via-indigo-600 to-brand-accent hover:from-brand-500 hover:to-brand-accent text-white font-black text-lg tracking-wider uppercase shadow-xl transition transform active:scale-98 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center space-x-3">
+            <i class="fa-solid fa-stopwatch text-2xl animate-pulse"></i>
+            <span id="stampButtonText">STAMP TIMESTAMP</span>
+          </button>
+
+          <!-- Quick Tip -->
+          <div class="flex items-center space-x-3 text-xs text-gray-400 pt-1">
+            <span class="px-2 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 font-mono">SPACE</span>
+            <span>or</span>
+            <span class="px-2 py-0.5 rounded bg-gray-800 text-gray-300 border border-gray-700 font-mono">ENTER</span>
+            <span>to stamp instantly</span>
+          </div>
+        </div>
+
+        <!-- Live Karaoke / Synchronized Preview Box -->
+        <div class="glass-panel rounded-2xl p-5 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center space-x-2">
+              <i class="fa-solid fa-microphone-lines text-brand-accent"></i>
+              <span>Live Karaoke Monitor</span>
+            </h3>
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          </div>
+          
+          <div id="karaokePreviewBox" class="min-h-[100px] bg-gray-950/80 rounded-xl p-4 flex flex-col justify-center items-center text-center border border-gray-800/60 transition">
+            <p id="karaokePrevLine" class="text-xs text-gray-500 mb-1 transition-all h-4 overflow-hidden truncate w-full"></p>
+            <p id="karaokeCurrentLine" class="text-base sm:text-lg font-bold text-emerald-400 transition-all my-1 scale-105">Ready for playback...</p>
+            <p id="karaokeNextLine" class="text-xs text-gray-500 mt-1 transition-all h-4 overflow-hidden truncate w-full"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT / BOTTOM PANEL: QUEUE & TIMED LINES TABLE (7 COLS) -->
+      <div class="lg:col-span-7 glass-panel rounded-2xl p-5 flex flex-col justify-between space-y-4">
+        
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 pb-3">
+          <div class="flex items-center space-x-3">
+            <h2 class="font-bold text-gray-200 text-sm flex items-center space-x-2">
+              <i class="fa-solid fa-list-check text-brand-accent"></i>
+              <span>Caption Queue & Timings</span>
+            </h2>
+            <span id="lineCounterBadge" class="text-xs px-2 py-0.5 rounded-md bg-gray-800 text-gray-300 font-mono">0 / 0 Lines</span>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button id="btnClearTimings" class="text-xs px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 transition">
+              Clear Timings
+            </button>
+            <button id="btnAddNewLine" class="text-xs px-2.5 py-1 rounded-lg bg-brand-600/30 hover:bg-brand-600/50 text-brand-accent border border-brand-500/30 transition flex items-center space-x-1">
+              <i class="fa-solid fa-plus"></i>
+              <span>Add Line</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Scrollable Lyrics Table -->
+        <div class="overflow-y-auto max-h-[420px] pr-1 space-y-1" id="lyricsTableContainer">
+          <!-- Empty State -->
+          <div id="emptyLyricsState" class="py-12 text-center text-gray-500 space-y-2">
+            <i class="fa-solid fa-file-lines text-3xl text-gray-600"></i>
+            <p class="text-sm">No lyrics loaded yet.</p>
+            <p class="text-xs text-gray-600">Upload an SRT, LRC, or TXT file or paste text above.</p>
+          </div>
+
+          <!-- Dynamic Lyric Rows inserted here -->
+          <div id="lyricRowsList" class="space-y-1.5"></div>
+        </div>
+
+        <!-- Navigation / Queue Controls -->
+        <div class="pt-2 border-t border-gray-800 flex items-center justify-between text-xs text-gray-400">
+          <div class="flex space-x-2">
+            <button id="btnPrevLineNav" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition flex items-center space-x-1">
+              <i class="fa-solid fa-chevron-up"></i>
+              <span>Prev Line</span>
+            </button>
+            <button id="btnNextLineNav" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition flex items-center space-x-1">
+              <span>Next Line</span>
+              <i class="fa-solid fa-chevron-down"></i>
+            </button>
+          </div>
+
+          <span class="text-[11px] text-gray-500 hidden sm:inline">Tip: Click line time to jump playback</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPORT & OUTPUT SECTION -->
+    <div class="glass-panel rounded-2xl p-6 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-800 pb-4">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+            <i class="fa-solid fa-file-export text-emerald-400"></i>
+            <span>Export Synchronized Captions</span>
+          </h2>
+          <p class="text-xs text-gray-400">Download formatted files or copy text to clipboard</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btnCopyClipboard" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-xs font-semibold transition flex items-center space-x-2">
+            <i class="fa-solid fa-copy"></i>
+            <span>Copy to Clipboard</span>
+          </button>
+          <button id="btnExportSRT" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-emerald-600/20">
+            <i class="fa-solid fa-download"></i>
+            <span>Download .SRT</span>
+          </button>
+          <button id="btnExportLRC" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-brand-500/20">
+            <i class="fa-solid fa-download"></i>
+            <span>Download .LRC</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview Tabs & Code Box -->
+      <div class="space-y-2">
+        <div class="flex items-center space-x-2">
+          <button id="tabPreviewSRT" class="px-3 py-1 text-xs font-medium rounded-lg bg-brand-600 text-white transition">SRT Preview</button>
+          <button id="tabPreviewLRC" class="px-3 py-1 text-xs font-medium rounded-lg bg-gray-800 text-gray-400 hover:text-white transition">LRC Preview</button>
+        </div>
+
+        <textarea id="exportPreviewTextarea" readonly rows="6" class="w-full bg-gray-950 border border-gray-800 rounded-xl p-4 text-xs font-mono text-emerald-400 focus:outline-none resize-none leading-relaxed" placeholder="Formatted timestamps will generate here after timing lines..."></textarea>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-800/80 glass-panel py-4 mt-8">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-500">
+      Lyric & Caption SyncMaster Studio &bull; Precision audio subtitle alignment tool
+    </div>
+  </footer>
+
+  <!-- MODAL: HOTKEYS LEGEND -->
+  <div id="modalHotkeys" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 border-gray-700 space-y-4">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+        <h3 class="font-bold text-white text-base flex items-center space-x-2">
+          <i class="fa-solid fa-keyboard text-brand-accent"></i>
+          <span>Keyboard Shortcuts</span>
+        </h3>
+        <button id="btnCloseModal" class="text-gray-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="flex justify-between items-center py-1.5 border-b border-gray-800/50">
+          <span class="text-gray-300">Stamp Timestamp / Next Line</span>
+          <div class="space-x-1">
+            <kbd class="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-brand-accent font-mono">SPACE</kbd>
+            <span class="text-gray-500">or</span>
+            <kbd class="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-brand-accent font-mono">ENTER</kbd>
+          </div>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-gray-800/50">
+          <span class="text-gray-300">Play / Pause Audio</span>
+          <kbd class="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 font-mono">Shift + Space</kbd>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-gray-800/50">
+          <span class="text-gray-300">Navigate Lines (Prev / Next)</span>
+          <div class="space-x-1">
+            <kbd class="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 font-mono">&uarr;</kbd>
+            <kbd class="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 font-mono">&darr;</kbd>
+          </div>
+        </div>
+        <div class="flex justify-between items-center py-1.5 border-b border-gray-800/50">
+          <span class="text-gray-300">Scrub Audio (&plusmn;5 Seconds)</span>
+          <div class="space-x-1">
+            <kbd class="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 font-mono">&larr;</kbd>
+            <kbd class="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 font-mono">&rarr;</kbd>
+          </div>
+        </div>
+      </div>
+
+      <button id="btnCloseModalBtn" class="w-full py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold transition">
+        Got It
+      </button>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    // --- STATE MANAGEMENT ---
+    const state = {
+      audioLoaded: false,
+      audioFileName: '',
+      lyricsLoaded: false,
+      lyricsFileName: '',
+      lines: [], // Array of objects: { id, text, start: null|number, end: null|number }
+      currentIndex: 0,
+      timingMode: 'autoEnd', // 'autoEnd' or 'range'
+      rangeState: 'start', // 'start' or 'end' when in range mode
+      previewFormat: 'SRT' // 'SRT' or 'LRC'
+    };
+
+    // --- DOM ELEMENTS ---
+    const audioEl = document.getElementById('audioElement');
+    const audioFileInput = document.getElementById('audioFileInput');
+    const lyricsFileInput = document.getElementById('lyricsFileInput');
+    const rawLyricsTextarea = document.getElementById('rawLyricsTextarea');
+    
+    // UI Displays & Badges
+    const audioStatusBadge = document.getElementById('audioStatusBadge');
+    const lyricsStatusBadge = document.getElementById('lyricsStatusBadge');
+    const audioFileNameDisplay = document.getElementById('audioFileNameDisplay');
+    const audioFileNameText = document.getElementById('audioFileNameText');
+    const lyricsFileNameDisplay = document.getElementById('lyricsFileNameDisplay');
+    const lyricsFileNameText = document.getElementById('lyricsFileNameText');
+    
+    // Controls
+    const btnPlayPause = document.getElementById('btnPlayPause');
+    const playIcon = document.getElementById('playIcon');
+    const playText = document.getElementById('playText');
+    const btnSkipBack = document.getElementById('btnSkipBack');
+    const btnSkipForward = document.getElementById('btnSkipForward');
+    const btnStop = document.getElementById('btnStop');
+    const speedSelect = document.getElementById('speedSelect');
+    const currentTimeDisplay = document.getElementById('currentTimeDisplay');
+    const durationDisplay = document.getElementById('durationDisplay');
+    const totalDurationText = document.getElementById('totalDurationText');
+    const waveformCanvas = document.getElementById('waveformCanvas');
+    const waveformContainer = document.getElementById('waveformContainer');
+    const playhead = document.getElementById('playhead');
+
+    // Retiming & Queue
+    const btnStamp = document.getElementById('btnStamp');
+    const stampButtonText = document.getElementById('stampButtonText');
+    const currentLyricDisplay = document.getElementById('currentLyricDisplay');
+    const rangeTapIndicator = document.getElementById('rangeTapIndicator');
+    const lyricRowsList = document.getElementById('lyricRowsList');
+    const emptyLyricsState = document.getElementById('emptyLyricsState');
+    const lineCounterBadge = document.getElementById('lineCounterBadge');
+    
+    // Modes & Nav
+    const modeAutoEnd = document.getElementById('modeAutoEnd');
+    const modeRange = document.getElementById('modeRange');
+    const btnPrevLineNav = document.getElementById('btnPrevLineNav');
+    const btnNextLineNav = document.getElementById('btnNextLineNav');
+    const btnClearTimings = document.getElementById('btnClearTimings');
+    const btnAddNewLine = document.getElementById('btnAddNewLine');
+
+    // Karaoke Monitor
+    const karaokePrevLine = document.getElementById('karaokePrevLine');
+    const karaokeCurrentLine = document.getElementById('karaokeCurrentLine');
+    const karaokeNextLine = document.getElementById('karaokeNextLine');
+
+    // Export & Tabs
+    const exportPreviewTextarea = document.getElementById('exportPreviewTextarea');
+    const tabPreviewSRT = document.getElementById('tabPreviewSRT');
+    const tabPreviewLRC = document.getElementById('tabPreviewLRC');
+    const btnCopyClipboard = document.getElementById('btnCopyClipboard');
+    const btnExportSRT = document.getElementById('btnExportSRT');
+    const btnExportLRC = document.getElementById('btnExportLRC');
+
+    // --- HELPER FUNCTIONS ---
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      const bg = type === 'error' ? 'bg-red-900/90 border-red-700 text-red-200' :
+                 type === 'success' ? 'bg-emerald-900/90 border-emerald-700 text-emerald-200' :
+                 'bg-gray-800/90 border-gray-700 text-gray-200';
+      
+      toast.className = `px-4 py-3 rounded-xl border ${bg} backdrop-blur-md shadow-lg text-xs font-medium flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto`;
+      toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : type === 'success' ? 'fa-circle-check' : 'fa-circle-info'}"></i><span>${message}</span>`;
+      
+      const container = document.getElementById('toastContainer');
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // Format Seconds to MM:SS.ms (SRT / LRC formats)
+    function formatTime(seconds, format = 'DISPLAY') {
+      if (seconds === null || seconds === undefined || isNaN(seconds)) return '--:--.---';
+      
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+      const ms = Math.floor((seconds % 1) * 1000);
+
+      const pMins = String(mins).padStart(2, '0');
+      const pSecs = String(secs).padStart(2, '0');
+      const pMs3 = String(ms).padStart(3, '0');
+      const pMs2 = String(Math.floor(ms / 10)).padStart(2, '0');
+
+      if (format === 'SRT') {
+        const pHrs = String(hrs).padStart(2, '0');
+        return `${pHrs}:${pMins}:${pSecs},${pMs3}`;
+      } else if (format === 'LRC') {
+        return `[${pMins}:${pSecs}.${pMs2}]`;
+      } else {
+        // DISPLAY format
+        return `${pMins}:${pSecs}.${pMs3}`;
+      }
+    }
+
+    // Parse timestamp input back to seconds for manually edited times
+    function parseTimeToSeconds(timeStr) {
+      if (!timeStr) return null;
+      timeStr = timeStr.trim().replace('[', '').replace(']', '');
+      
+      // Check SRT format: 00:01:20,500
+      if (timeStr.includes(',')) {
+        const parts = timeStr.split(',');
+        const hms = parts[0].split(':');
+        const ms = parseInt(parts[1] || '0', 10);
+        if (hms.length === 3) {
+          return parseInt(hms[0]) * 3600 + parseInt(hms[1]) * 60 + parseInt(hms[2]) + ms / 1000;
+        }
+      }
+
+      // Check standard format: 01:20.50 or 01:20.500
+      const parts = timeStr.split(':');
+      if (parts.length === 2) {
+        const mins = parseFloat(parts[0]);
+        const secs = parseFloat(parts[1]);
+        return mins * 60 + secs;
+      }
+      return parseFloat(timeStr) || null;
+    }
+
+    // --- CAPTION / LYRIC STRIP & PARSER ENGINE ---
+    function parseAndStripLyrics(rawText) {
+      if (!rawText || !rawText.trim()) return [];
+
+      const lines = rawText.split(/\r?\n/);
+      const cleanLines = [];
+
+      // Regex patterns
+      const srtTimePattern = /^\d+\s*$/;
+      const srtTimecodePattern = /\d{2}:\d{2}:\d{2}[,\.]\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}[,\.]\d{3}/;
+      const lrcPattern = /\[\d{2}:\d{2}\.\d{2,3}\]/g;
+
+      for (let line of lines) {
+        let trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // Skip SRT index numbers and duration lines
+        if (srtTimePattern.test(trimmed)) continue;
+        if (srtTimecodePattern.test(trimmed)) continue;
+
+        // Strip LRC timestamps if embedded
+        trimmed = trimmed.replace(lrcPattern, '').trim();
+
+        // HTML tag stripping (e.g. <i>, <font>)
+        trimmed = trimmed.replace(/<[^>]*>/g, '').trim();
+
+        if (trimmed.length > 0) {
+          cleanLines.push(trimmed);
+        }
+      }
+
+      return cleanLines.map((text, idx) => ({
+        id: idx,
+        text: text,
+        start: null,
+        end: null
+      }));
+    }
+
+    // --- RENDER FUNCTIONS ---
+    function renderQueue() {
+      lyricRowsList.innerHTML = '';
+
+      if (state.lines.length === 0) {
+        emptyLyricsState.classList.remove('hidden');
+        lineCounterBadge.textContent = '0 / 0 Lines';
+        currentLyricDisplay.textContent = 'Load lyrics and press Play to start timing';
+        btnStamp.disabled = true;
+        updateKaraokeDisplay();
+        updateExportPreview();
+        return;
+      }
+
+      emptyLyricsState.classList.add('hidden');
+      lineCounterBadge.textContent = `${state.currentIndex + 1} / ${state.lines.length} Lines`;
+
+      state.lines.forEach((line, index) => {
+        const isCurrent = index === state.currentIndex;
+        const isTimed = line.start !== null;
+
+        const row = document.createElement('div');
+        row.className = `p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 transition ${
+          isCurrent
+            ? 'bg-brand-500/10 border-brand-500/60 shadow-md ring-1 ring-brand-500/30'
+            : isTimed
+            ? 'bg-gray-900/60 border-gray-800 hover:border-gray-700'
+            : 'bg-gray-950/40 border-gray-800/60 text-gray-400 opacity-80'
+        }`;
+
+        const startTimeStr = line.start !== null ? formatTime(line.start, 'DISPLAY') : '--:--.---';
+        const endTimeStr = line.end !== null ? formatTime(line.end, 'DISPLAY') : '--:--.---';
+
+        row.innerHTML = `
+          <div class="flex items-center space-x-3 w-full sm:w-auto">
+            <span class="w-6 h-6 rounded-md ${isCurrent ? 'bg-brand-500 text-white font-bold' : 'bg-gray-800 text-gray-400'} flex items-center justify-center text-xs shrink-0 mono">
+              ${index + 1}
+            </span>
+            <input type="text" value="${line.text.replace(/"/g, '&quot;')}" data-id="${index}" class="lyric-text-input bg-transparent text-sm text-gray-200 focus:outline-none focus:border-b focus:border-brand-500 w-full sm:w-80 font-medium truncate" />
+          </div>
+
+          <div class="flex items-center space-x-2 text-xs mono w-full sm:w-auto justify-between sm:justify-end">
+            <div class="flex items-center space-x-1">
+              <button data-id="${index}" class="btn-jump-time text-brand-accent hover:underline bg-gray-800/80 px-2 py-1 rounded border border-gray-700" title="Jump audio to this timestamp">
+                ${startTimeStr}
+              </button>
+              <span class="text-gray-600">&rarr;</span>
+              <span class="text-gray-400 px-2 py-1 bg-gray-900 rounded border border-gray-800">${endTimeStr}</span>
+            </div>
+
+            <div class="flex items-center space-x-1">
+              <button data-id="${index}" class="btn-retime-row px-2 py-1 rounded bg-gray-800 hover:bg-brand-600 text-gray-300 hover:text-white transition" title="Select line to re-time">
+                <i class="fa-solid fa-crosshairs"></i>
+              </button>
+              <button data-id="${index}" class="btn-clear-row px-2 py-1 rounded bg-gray-800 hover:bg-red-900/60 text-gray-400 hover:text-red-300 transition" title="Clear timing">
+                <i class="fa-solid fa-eraser"></i>
+              </button>
+            </div>
+          </div>
+        `;
+
+        lyricRowsList.appendChild(row);
+      });
+
+      // Update current active banner display
+      if (state.lines[state.currentIndex]) {
+        currentLyricDisplay.textContent = state.lines[state.currentIndex].text;
+        btnStamp.disabled = false;
+      }
+
+      // Auto scroll container to active line
+      const activeRow = lyricRowsList.children[state.currentIndex];
+      if (activeRow) {
+        activeRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      updateExportPreview();
+    }
+
+    // --- AUDIO & WAVEFORM CANVAS ---
+    function drawWaveform() {
+      const ctx = waveformCanvas.getContext('2d');
+      const width = waveformCanvas.width = waveformContainer.clientWidth;
+      const height = waveformCanvas.height = waveformContainer.clientHeight;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // Draw subtle background grid bars
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, width, height);
+
+      const numBars = Math.floor(width / 4);
+      const barWidth = 2;
+      const gap = 2;
+
+      ctx.fillStyle = '#374151';
+
+      // Pseudo-waveform visualization generator
+      for (let i = 0; i < numBars; i++) {
+        // Deterministic pseudo-random height based on index
+        const h = Math.abs(Math.sin(i * 0.15) * Math.cos(i * 0.05)) * (height * 0.7) + 6;
+        const x = i * (barWidth + gap);
+        const y = (height - h) / 2;
+
+        ctx.fillRect(x, y, barWidth, h);
+      }
+    }
+
+    function updateAudioProgress() {
+      if (!audioEl.duration) return;
+      const current = audioEl.currentTime;
+      const total = audioEl.duration;
+
+      currentTimeDisplay.textContent = formatTime(current, 'DISPLAY');
+      durationDisplay.textContent = formatTime(total, 'DISPLAY');
+
+      const pct = (current / total) * 100;
+      playhead.style.left = `${pct}%`;
+
+      updateKaraokeDisplay();
+    }
+
+    // Live Karaoke Display Engine
+    function updateKaraokeDisplay() {
+      if (state.lines.length === 0) {
+        karaokePrevLine.textContent = '';
+        karaokeCurrentLine.textContent = 'No lyrics loaded';
+        karaokeNextLine.textContent = '';
+        return;
+      }
+
+      const currentTime = audioEl.currentTime;
+      
+      // Find currently active line by timestamps
+      let activeIndex = -1;
+      for (let i = 0; i < state.lines.length; i++) {
+        const line = state.lines[i];
+        if (line.start !== null) {
+          const nextLine = state.lines[i + 1];
+          const endTime = line.end !== null ? line.end : (nextLine && nextLine.start ? nextLine.start : audioEl.duration || 99999);
+          
+          if (currentTime >= line.start && currentTime <= endTime) {
+            activeIndex = i;
+            break;
+          }
+        }
+      }
+
+      // If playing beyond explicit timing, show current queue focus
+      if (activeIndex === -1) {
+        activeIndex = state.currentIndex;
+      }
+
+      karaokePrevLine.textContent = state.lines[activeIndex - 1] ? state.lines[activeIndex - 1].text : '';
+      karaokeCurrentLine.textContent = state.lines[activeIndex] ? state.lines[activeIndex].text : '';
+      karaokeNextLine.textContent = state.lines[activeIndex + 1] ? state.lines[activeIndex + 1].text : '';
+    }
+
+    // --- TIMING / STAMPING LOGIC ---
+    function stampCurrentLine() {
+      if (state.lines.length === 0) return;
+      const now = audioEl.currentTime;
+      const idx = state.currentIndex;
+
+      if (state.timingMode === 'autoEnd') {
+        // Continuous Mode: Set start time of current, and end time of previous
+        state.lines[idx].start = now;
+
+        if (idx > 0 && state.lines[idx - 1].start !== null) {
+          state.lines[idx - 1].end = now;
+        }
+
+        // Auto advance to next line
+        if (idx < state.lines.length - 1) {
+          state.currentIndex++;
+        }
+        showToast(`Stamped line ${idx + 1} at ${formatTime(now, 'DISPLAY')}`, 'success');
+
+      } else {
+        // Tap Range Mode: First tap sets Start, Second tap sets End
+        if (state.rangeState === 'start') {
+          state.lines[idx].start = now;
+          state.rangeState = 'end';
+          rangeTapIndicator.classList.remove('hidden');
+          stampButtonText.textContent = 'TAP END TIMESTAMP';
+          showToast(`Start time set for line ${idx + 1}`, 'info');
+        } else {
+          state.lines[idx].end = now;
+          state.rangeState = 'start';
+          rangeTapIndicator.classList.add('hidden');
+          stampButtonText.textContent = 'STAMP TIMESTAMP';
+          showToast(`End time set for line ${idx + 1}`, 'success');
+
+          // Auto advance
+          if (idx < state.lines.length - 1) {
+            state.currentIndex++;
+          }
+        }
+      }
+
+      renderQueue();
+    }
+
+    // --- EXPORT & FORMAT GENERATOR ---
+    function generateSRT() {
+      let output = '';
+      let count = 1;
+
+      state.lines.forEach((line, i) => {
+        if (line.start !== null) {
+          const startTime = formatTime(line.start, 'SRT');
+          // Fallback end time if not explicitly set
+          let endTimeNum = line.end;
+          if (endTimeNum === null) {
+            const next = state.lines[i + 1];
+            endTimeNum = (next && next.start) ? next.start : line.start + 3.0;
+          }
+          const endTime = formatTime(endTimeNum, 'SRT');
+
+          output += `${count}\n`;
+          output += `${startTime} --> ${endTime}\n`;
+          output += `${line.text}\n\n`;
+          count++;
+        }
+      });
+
+      return output.trim();
+    }
+
+    function generateLRC() {
+      let output = '';
+
+      state.lines.forEach((line) => {
+        if (line.start !== null) {
+          const timeTag = formatTime(line.start, 'LRC');
+          output += `${timeTag}${line.text}\n`;
+        }
+      });
+
+      return output.trim();
+    }
+
+    function updateExportPreview() {
+      if (state.previewFormat === 'SRT') {
+        exportPreviewTextarea.value = generateSRT() || 'No timed captions yet.';
+      } else {
+        exportPreviewTextarea.value = generateLRC() || 'No timed captions yet.';
+      }
+    }
+
+    // --- EVENT LISTENERS & SETUP ---
+    
+    // File Upload: Audio
+    const dropZoneAudio = document.getElementById('dropZoneAudio');
+    dropZoneAudio.addEventListener('click', () => audioFileInput.click());
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZoneAudio.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZoneAudio.classList.add('border-brand-500', 'bg-brand-500/10');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZoneAudio.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZoneAudio.classList.remove('border-brand-500', 'bg-brand-500/10');
+      });
+    });
+
+    dropZoneAudio.addEventListener('drop', (e) => {
+      const files = e.dataTransfer.files;
+      if (files.length > 0) handleAudioFile(files[0]);
+    });
+
+    audioFileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) handleAudioFile(e.target.files[0]);
+    });
+
+    function handleAudioFile(file) {
+      if (!file.type.startsWith('audio/') && !file.name.match(/\.(mp3|wav|ogg|m4a|flac)$/i)) {
+        showToast('Please upload a valid audio file.', 'error');
+        return;
+      }
+
+      const url = URL.createObjectURL(file);
+      audioEl.src = url;
+      state.audioLoaded = true;
+      state.audioFileName = file.name;
+
+      audioFileNameText.textContent = file.name;
+      dropZoneAudio.classList.add('hidden');
+      audioFileNameDisplay.classList.remove('hidden');
+      audioStatusBadge.textContent = 'Audio Loaded';
+      audioStatusBadge.className = 'text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+
+      showToast(`Audio loaded: ${file.name}`, 'success');
+    }
+
+    document.getElementById('btnClearAudio').addEventListener('click', () => {
+      audioEl.pause();
+      audioEl.src = '';
+      state.audioLoaded = false;
+      dropZoneAudio.classList.remove('hidden');
+      audioFileNameDisplay.classList.add('hidden');
+      audioStatusBadge.textContent = 'No Audio';
+      audioStatusBadge.className = 'text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-400 border border-gray-700';
+      currentTimeDisplay.textContent = '00:00.000';
+      durationDisplay.textContent = '00:00.000';
+      playhead.style.left = '0%';
+    });
+
+    // File Upload: Lyrics
+    const dropZoneLyrics = document.getElementById('dropZoneLyrics');
+    dropZoneLyrics.addEventListener('click', () => lyricsFileInput.click());
+
+    lyricsFileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) handleLyricsFile(e.target.files[0]);
+    });
+
+    function handleLyricsFile(file) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const text = evt.target.result;
+        state.lines = parseAndStripLyrics(text);
+        state.currentIndex = 0;
+        state.lyricsLoaded = true;
+        state.lyricsFileName = file.name;
+
+        lyricsFileNameText.textContent = file.name;
+        dropZoneLyrics.classList.add('hidden');
+        document.getElementById('pasteContainer').classList.add('hidden');
+        lyricsFileNameDisplay.classList.remove('hidden');
+        lyricsStatusBadge.textContent = `${state.lines.length} Lines`;
+        lyricsStatusBadge.className = 'text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+
+        renderQueue();
+        showToast(`Parsed ${state.lines.length} lyric lines`, 'success');
+      };
+      reader.readAsText(file);
+    }
+
+    document.getElementById('btnClearLyrics').addEventListener('click', () => {
+      state.lines = [];
+      state.currentIndex = 0;
+      state.lyricsLoaded = false;
+      dropZoneLyrics.classList.remove('hidden');
+      lyricsFileNameDisplay.classList.add('hidden');
+      lyricsStatusBadge.textContent = 'No Captions';
+      lyricsStatusBadge.className = 'text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-400 border border-gray-700';
+      renderQueue();
+    });
+
+    // Manual Paste Text Controls
+    document.getElementById('btnTogglePaste').addEventListener('click', () => {
+      dropZoneLyrics.classList.add('hidden');
+      document.getElementById('pasteContainer').classList.remove('hidden');
+    });
+
+    document.getElementById('btnCancelPaste').addEventListener('click', () => {
+      document.getElementById('pasteContainer').classList.add('hidden');
+      if (!state.lyricsLoaded) dropZoneLyrics.classList.remove('hidden');
+    });
+
+    document.getElementById('btnApplyPaste').addEventListener('click', () => {
+      const text = rawLyricsTextarea.value;
+      if (!text.trim()) {
+        showToast('Please paste some text first.', 'error');
+        return;
+      }
+      state.lines = parseAndStripLyrics(text);
+      state.currentIndex = 0;
+      state.lyricsLoaded = true;
+      
+      lyricsFileNameText.textContent = 'Pasted Text';
+      document.getElementById('pasteContainer').classList.add('hidden');
+      lyricsFileNameDisplay.classList.remove('hidden');
+      lyricsStatusBadge.textContent = `${state.lines.length} Lines`;
+      lyricsStatusBadge.className = 'text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+
+      renderQueue();
+      showToast(`Parsed ${state.lines.length} lines from text`, 'success');
+    });
+
+    // Playback Controls
+    btnPlayPause.addEventListener('click', () => {
+      if (!state.audioLoaded) {
+        showToast('Please upload an audio file first.', 'error');
+        return;
+      }
+
+      if (audioEl.paused) {
+        audioEl.play();
+        playIcon.className = 'fa-solid fa-pause';
+        playText.textContent = 'Pause';
+      } else {
+        audioEl.pause();
+        playIcon.className = 'fa-solid fa-play';
+        playText.textContent = 'Play';
+      }
+    });
+
+    btnSkipBack.addEventListener('click', () => {
+      audioEl.currentTime = Math.max(0, audioEl.currentTime - 5);
+    });
+
+    btnSkipForward.addEventListener('click', () => {
+      audioEl.currentTime = Math.min(audioEl.duration || 0, audioEl.currentTime + 5);
+    });
+
+    btnStop.addEventListener('click', () => {
+      audioEl.pause();
+      audioEl.currentTime = 0;
+      playIcon.className = 'fa-solid fa-play';
+      playText.textContent = 'Play';
+    });
+
+    speedSelect.addEventListener('change', (e) => {
+      audioEl.playbackRate = parseFloat(e.target.value);
+    });
+
+    audioEl.addEventListener('timeupdate', updateAudioProgress);
+    audioEl.addEventListener('loadedmetadata', () => {
+      durationDisplay.textContent = formatTime(audioEl.duration, 'DISPLAY');
+      totalDurationText.textContent = formatTime(audioEl.duration, 'DISPLAY');
+      drawWaveform();
+    });
+
+    audioEl.addEventListener('ended', () => {
+      playIcon.className = 'fa-solid fa-play';
+      playText.textContent = 'Play';
+    });
+
+    // Waveform Scrub Click
+    waveformContainer.addEventListener('click', (e) => {
+      if (!audioEl.duration) return;
+      const rect = waveformContainer.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const pct = clickX / rect.width;
+      audioEl.currentTime = pct * audioEl.duration;
+    });
+
+    // Timing Mode Toggle
+    modeAutoEnd.addEventListener('click', () => {
+      state.timingMode = 'autoEnd';
+      modeAutoEnd.className = 'px-2.5 py-1 text-xs rounded-md font-medium transition bg-brand-600 text-white';
+      modeRange.className = 'px-2.5 py-1 text-xs rounded-md font-medium text-gray-400 hover:text-white transition';
+      rangeTapIndicator.classList.add('hidden');
+      stampButtonText.textContent = 'STAMP TIMESTAMP';
+    });
+
+    modeRange.addEventListener('click', () => {
+      state.timingMode = 'range';
+      state.rangeState = 'start';
+      modeRange.className = 'px-2.5 py-1 text-xs rounded-md font-medium transition bg-brand-600 text-white';
+      modeAutoEnd.className = 'px-2.5 py-1 text-xs rounded-md font-medium text-gray-400 hover:text-white transition';
+      stampButtonText.textContent = 'TAP START TIMESTAMP';
+    });
+
+    // Stamp Action
+    btnStamp.addEventListener('click', stampCurrentLine);
+
+    // Nav Line buttons
+    btnPrevLineNav.addEventListener('click', () => {
+      if (state.currentIndex > 0) {
+        state.currentIndex--;
+        renderQueue();
+      }
+    });
+
+    btnNextLineNav.addEventListener('click', () => {
+      if (state.currentIndex < state.lines.length - 1) {
+        state.currentIndex++;
+        renderQueue();
+      }
+    });
+
+    btnClearTimings.addEventListener('click', () => {
+      state.lines.forEach(line => {
+        line.start = null;
+        line.end = null;
+      });
+      state.currentIndex = 0;
+      renderQueue();
+      showToast('All timestamps cleared', 'info');
+    });
+
+    btnAddNewLine.addEventListener('click', () => {
+      const newLine = {
+        id: state.lines.length,
+        text: 'New lyric line',
+        start: null,
+        end: null
+      };
+      state.lines.push(newLine);
+      renderQueue();
+    });
+
+    // Table Event Delegation (Text edit, Jump, Clear)
+    lyricRowsList.addEventListener('input', (e) => {
+      if (e.target.classList.contains('lyric-text-input')) {
+        const idx = parseInt(e.target.dataset.id, 10);
+        state.lines[idx].text = e.target.value;
+        if (idx === state.currentIndex) {
+          currentLyricDisplay.textContent = e.target.value;
+        }
+        updateExportPreview();
+      }
+    });
+
+    lyricRowsList.addEventListener('click', (e) => {
+      const jumpBtn = e.target.closest('.btn-jump-time');
+      if (jumpBtn) {
+        const idx = parseInt(jumpBtn.dataset.id, 10);
+        if (state.lines[idx] && state.lines[idx].start !== null) {
+          audioEl.currentTime = state.lines[idx].start;
+        }
+        return;
+      }
+
+      const retimeBtn = e.target.closest('.btn-retime-row');
+      if (retimeBtn) {
+        state.currentIndex = parseInt(retimeBtn.dataset.id, 10);
+        renderQueue();
+        return;
+      }
+
+      const clearBtn = e.target.closest('.btn-clear-row');
+      if (clearBtn) {
+        const idx = parseInt(clearBtn.dataset.id, 10);
+        state.lines[idx].start = null;
+        state.lines[idx].end = null;
+        renderQueue();
+        return;
+      }
+    });
+
+    // Export Tabs
+    tabPreviewSRT.addEventListener('click', () => {
+      state.previewFormat = 'SRT';
+      tabPreviewSRT.className = 'px-3 py-1 text-xs font-medium rounded-lg bg-brand-600 text-white transition';
+      tabPreviewLRC.className = 'px-3 py-1 text-xs font-medium rounded-lg bg-gray-800 text-gray-400 hover:text-white transition';
+      updateExportPreview();
+    });
+
+    tabPreviewLRC.addEventListener('click', () => {
+      state.previewFormat = 'LRC';
+      tabPreviewLRC.className = 'px-3 py-1 text-xs font-medium rounded-lg bg-brand-600 text-white transition';
+      tabPreviewSRT.className = 'px-3 py-1 text-xs font-medium rounded-lg bg-gray-800 text-gray-400 hover:text-white transition';
+      updateExportPreview();
+    });
+
+    // Copy to Clipboard
+    btnCopyClipboard.addEventListener('click', () => {
+      const text = exportPreviewTextarea.value;
+      if (!text) return;
+      
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      showToast('Copied captions to clipboard!', 'success');
+    });
+
+    // Download File Helpers
+    function downloadFile(filename, content) {
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    btnExportSRT.addEventListener('click', () => {
+      const content = generateSRT();
+      if (!content) {
+        showToast('No timed captions to export.', 'error');
+        return;
+      }
+      const filename = (state.audioFileName ? state.audioFileName.replace(/\.[^/.]+$/, "") : 'captions') + '.srt';
+      downloadFile(filename, content);
+      showToast(`Downloaded ${filename}`, 'success');
+    });
+
+    btnExportLRC.addEventListener('click', () => {
+      const content = generateLRC();
+      if (!content) {
+        showToast('No timed lyrics to export.', 'error');
+        return;
+      }
+      const filename = (state.audioFileName ? state.audioFileName.replace(/\.[^/.]+$/, "") : 'lyrics') + '.lrc';
+      downloadFile(filename, content);
+      showToast(`Downloaded ${filename}`, 'success');
+    });
+
+    // Reset All
+    document.getElementById('btnResetAll').addEventListener('click', () => {
+      if (confirm('Are you sure you want to reset all audio, lyrics, and timestamps?')) {
+        location.reload();
+      }
+    });
+
+    // Modals
+    const modalHotkeys = document.getElementById('modalHotkeys');
+    document.getElementById('btnShortcutsModal').addEventListener('click', () => modalHotkeys.classList.remove('hidden'));
+    document.getElementById('btnCloseModal').addEventListener('click', () => modalHotkeys.classList.add('hidden'));
+    document.getElementById('btnCloseModalBtn').addEventListener('click', () => modalHotkeys.classList.add('hidden'));
+
+    // KEYBOARD SHORTCUTS ENGINE
+    window.addEventListener('keydown', (e) => {
+      // Don't trigger shortcuts if user is typing in text input
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+      if (e.code === 'Space' || e.code === 'Enter') {
+        if (e.shiftKey) {
+          // Shift + Space: Toggle Play/Pause
+          e.preventDefault();
+          btnPlayPause.click();
+        } else {
+          // Space or Enter: Stamp Timestamp
+          e.preventDefault();
+          stampCurrentLine();
+        }
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        btnPrevLineNav.click();
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        btnNextLineNav.click();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        btnSkipBack.click();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        btnSkipForward.click();
+      }
+    });
+
+    // Resize window draw recalculation
+    window.addEventListener('resize', () => {
+      drawWaveform();
+    });
+
+    // Initial render
+    window.onload = function() {
+      drawWaveform();
+      renderQueue();
+    };
+  </script>
+</body>
+</html>

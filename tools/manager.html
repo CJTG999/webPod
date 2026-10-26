@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="https://codehs.com/uploads/dd0e0dfb0e66f976a74ea5d1dac6e8eb">
+    <title>webPod Save Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.5); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.8); }
+    </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-100 font-sans flex flex-col antialiased">
+    <header class="h-14 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-3">
+            <a href="./index.html" class="w-9 h-9 rounded-lg bg-black hover:bg-slate-900 text-white flex items-center justify-center border border-slate-700/80 shadow-md transition" title="Back to webPod">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-file-zipper text-cyan-400 text-xl"></i>
+                <h1 class="font-bold text-lg tracking-wider bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                    webPod Manager
+                </h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span id="dbStatus" class="bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700">
+                <i class="fa-solid fa-database text-cyan-400 mr-1"></i> Connecting…
+            </span>
+        </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-4 sm:p-8 max-w-4xl w-full mx-auto space-y-6">
+        <p class="text-sm text-slate-400 leading-relaxed">
+            This page reads and writes the same browser IndexedDB (<code class="text-cyan-400">webPodMemoryDB</code>)
+            that the main player uses. Export packs every track's audio plus a JSON manifest
+            (metadata, lyrics, offsets, LRCLIB IDs). Import restores them.
+        </p>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold text-cyan-400" id="statTracks">0</p>
+                <p class="text-[11px] text-slate-500 uppercase tracking-wider mt-1">Tracks</p>
+            </div>
+            <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold text-cyan-400" id="statSize">0 MB</p>
+                <p class="text-[11px] text-slate-500 uppercase tracking-wider mt-1">Audio size</p>
+            </div>
+            <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold text-cyan-400" id="statLyrics">0</p>
+                <p class="text-[11px] text-slate-500 uppercase tracking-wider mt-1">With lyrics</p>
+            </div>
+            <div class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 text-center">
+                <p class="text-2xl font-bold text-cyan-400" id="statOffset">0</p>
+                <p class="text-[11px] text-slate-500 uppercase tracking-wider mt-1">Custom offsets</p>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="grid sm:grid-cols-2 gap-4">
+            <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <h2 class="text-sm font-semibold text-cyan-400 flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> Export library
+                </h2>
+                <p class="text-xs text-slate-400">
+                    Creates a ZIP containing <code class="text-slate-300">manifest.json</code> and one audio file per track.
+                    Safe to keep offline or move between browsers / devices.
+                </p>
+                <button id="btnExport" class="w-full bg-cyan-600 hover:bg-cyan-500 active:scale-[0.98] text-white text-sm font-semibold py-2.5 rounded-xl transition shadow-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-zipper"></i>
+                    <span id="lblExport">Download ZIP backup</span>
+                </button>
+                <div id="exportProgress" class="hidden">
+                    <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div id="exportBar" class="h-full bg-cyan-500 transition-all duration-200" style="width:0%"></div>
+                    </div>
+                    <p id="exportStatus" class="text-[11px] text-slate-500 mt-1.5 text-center"></p>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <h2 class="text-sm font-semibold text-cyan-400 flex items-center gap-2">
+                    <i class="fa-solid fa-upload"></i> Import library
+                </h2>
+                <p class="text-xs text-slate-400">
+                    Select a ZIP previously exported by this tool. Tracks are merged by ID
+                    (existing tracks with the same ID are replaced). Audio + lyrics + offsets are restored.
+                </p>
+                <label class="w-full bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-white text-sm font-semibold py-2.5 rounded-xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer border border-slate-700">
+                    <i class="fa-solid fa-file-import"></i>
+                    <span id="lblImport">Choose ZIP file…</span>
+                    <input type="file" id="fileImportZip" accept=".zip,application/zip" class="hidden">
+                </label>
+                <div id="importProgress" class="hidden">
+                    <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div id="importBar" class="h-full bg-emerald-500 transition-all duration-200" style="width:0%"></div>
+                    </div>
+                    <p id="importStatus" class="text-[11px] text-slate-500 mt-1.5 text-center"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Track list preview -->
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden">
+            <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-cyan-400 flex items-center gap-2">
+                    <i class="fa-solid fa-list"></i> Library contents
+                </h2>
+                <button id="btnRefresh" class="text-xs text-slate-400 hover:text-white transition flex items-center gap-1">
+                    <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                </button>
+            </div>
+            <div id="trackList" class="max-h-[420px] overflow-y-auto divide-y divide-slate-800/80">
+                <div class="p-8 text-center text-slate-500 text-xs">
+                    <i class="fa-solid fa-spinner fa-spin text-xl mb-2 text-cyan-400"></i>
+                    <p>Loading library…</p>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-[11px] text-slate-600 text-center pb-6">
+            Same-origin required — open this page from the same folder / origin as <code>index.html</code> (webPod)
+            so both share IndexedDB.
+        </p>
+    </main>
+
+<script>
+const DB_NAME = 'webPodMemoryDB';
+const DB_VERSION = 1;
+let db = null;
+let tracks = [];
+
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+            const database = e.target.result;
+            if (!database.objectStoreNames.contains('tracks')) {
+                database.createObjectStore('tracks', { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = (e) => {
+            db = e.target.result;
+            resolve(db);
+        };
+        request.onerror = (e) => reject(e.target.error);
+    });
+}
+
+function loadTracksFromDB() {
+    return new Promise((resolve) => {
+        if (!db) return resolve([]);
+        const tx = db.transaction('tracks', 'readonly');
+        const req = tx.objectStore('tracks').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+    });
+}
+
+function saveTrackToDB(trackObj) {
+    return new Promise((resolve, reject) => {
+        if (!db) return reject(new Error('DB not open'));
+        const tx = db.transaction('tracks', 'readwrite');
+        tx.objectStore('tracks').put(trackObj);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+function formatBytes(bytes) {
+    if (!bytes || bytes < 1024) return (bytes || 0) + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function sanitizeFileName(name) {
+    return String(name || 'track')
+        .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 120) || 'track';
+}
+
+function extensionForMime(mime, fileName) {
+    if (fileName && fileName.includes('.')) {
+        const ext = fileName.split('.').pop().toLowerCase();
+        if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'webm'].includes(ext)) return ext;
+    }
+    const map = {
+        'audio/mpeg': 'mp3',
+        'audio/mp3': 'mp3',
+        'audio/wav': 'wav',
+        'audio/wave': 'wav',
+        'audio/x-wav': 'wav',
+        'audio/ogg': 'ogg',
+        'audio/flac': 'flac',
+        'audio/mp4': 'm4a',
+        'audio/aac': 'aac',
+        'audio/webm': 'webm'
+    };
+    return map[mime] || 'mp3';
+}
+
+function updateStats() {
+    const totalBytes = tracks.reduce((s, t) => s + (t.size || (t.fileBuffer && t.fileBuffer.byteLength) || 0), 0);
+    const withLyrics = tracks.filter(t => t.customLyrics && t.customLyrics.length > 0).length;
+    const withOffset = tracks.filter(t => typeof t.lyricOffset === 'number' && t.lyricOffset !== 0).length;
+    document.getElementById('statTracks').textContent = tracks.length;
+    document.getElementById('statSize').textContent = formatBytes(totalBytes);
+    document.getElementById('statLyrics').textContent = withLyrics;
+    document.getElementById('statOffset').textContent = withOffset;
+    document.getElementById('btnExport').disabled = tracks.length === 0;
+}
+
+function renderTrackList() {
+    const el = document.getElementById('trackList');
+    if (!tracks.length) {
+        el.innerHTML = `
+            <div class="p-8 text-center text-slate-500 text-xs">
+                <i class="fa-solid fa-folder-open text-2xl mb-2"></i>
+                <p>No tracks in webPod memory.</p>
+                <p class="text-[10px] text-slate-600 mt-1">Open the player and upload songs first.</p>
+            </div>`;
+        return;
+    }
+    el.innerHTML = tracks.map((t, i) => {
+        const hasLyrics = t.customLyrics && t.customLyrics.length > 0;
+        const offset = typeof t.lyricOffset === 'number' ? t.lyricOffset : 0;
+        const src = t.lyricsSource || (hasLyrics ? 'custom' : 'none');
+        const lrclib = t.lrclibId != null ? ` #${t.lrclibId}` : '';
+        return `
+        <div class="px-5 py-3 flex items-start gap-3 hover:bg-slate-800/40 transition">
+            <span class="text-slate-600 text-xs font-mono w-6 shrink-0 pt-0.5">${i + 1}</span>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-white truncate">${escapeHtml(t.title)}</p>
+                <p class="text-[11px] text-slate-500 truncate">${escapeHtml(t.artist || 'Unknown Artist')}</p>
+                <div class="flex flex-wrap gap-1.5 mt-1.5">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">${formatBytes(t.size || 0)}</span>
+                    ${hasLyrics
+                        ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">${escapeHtml(src)}${escapeHtml(lrclib)} · ${t.customLyrics.length} lines</span>`
+                        : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 border border-slate-700">No lyrics</span>`}
+                    ${offset !== 0
+                        ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/60">Offset ${offset > 0 ? '+' : ''}${offset.toFixed(1)}s</span>`
+                        : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function refresh() {
+    tracks = await loadTracksFromDB();
+    // Normalize fields for display
+    tracks = tracks.map(t => ({
+        lyricOffset: 0.0,
+        lyricsSource: (t.customLyrics && t.customLyrics.length) ? 'custom' : 'none',
+        lrclibId: null,
+        ...t
+    }));
+    updateStats();
+    renderTrackList();
+    document.getElementById('dbStatus').innerHTML =
+        `<i class="fa-solid fa-database text-emerald-400 mr-1"></i> ${tracks.length} track${tracks.length === 1 ? '' : 's'} in DB`;
+}
+
+async function exportZip() {
+    if (!tracks.length) return;
+    const btn = document.getElementById('btnExport');
+    const prog = document.getElementById('exportProgress');
+    const bar = document.getElementById('exportBar');
+    const status = document.getElementById('exportStatus');
+    const lbl = document.getElementById('lblExport');
+    btn.disabled = true;
+    prog.classList.remove('hidden');
+    lbl.textContent = 'Building ZIP…';
+
+    try {
+        const zip = new JSZip();
+        const audioFolder = zip.folder('audio');
+
+        const manifestTracks = [];
+        const total = tracks.length;
+
+        for (let i = 0; i < total; i++) {
+            const t = tracks[i];
+            const pct = Math.round(((i + 0.5) / total) * 100);
+            bar.style.width = pct + '%';
+            status.textContent = `Packing ${i + 1} / ${total}: ${t.title}`;
+
+            const ext = extensionForMime(t.mimeType, t.fileName);
+            const safeBase = sanitizeFileName(`${t.artist || 'Unknown'} - ${t.title}`);
+            const audioFileName = `${safeBase}.${ext}`;
+            // Prefer stable name keyed by id to avoid collisions
+            const storedName = `${sanitizeFileName(t.id)}.${ext}`;
+
+            if (t.fileBuffer) {
+                audioFolder.file(storedName, t.fileBuffer);
+            }
+
+            manifestTracks.push({
+                id: t.id,
+                title: t.title,
+                artist: t.artist || 'Unknown Artist',
+                fileName: t.fileName || audioFileName,
+                mimeType: t.mimeType || 'audio/mpeg',
+                size: t.size || (t.fileBuffer && t.fileBuffer.byteLength) || 0,
+                audioFile: `audio/${storedName}`,
+                lyricOffset: typeof t.lyricOffset === 'number' ? t.lyricOffset : 0.0,
+                lyricsSource: t.lyricsSource || ((t.customLyrics && t.customLyrics.length) ? 'custom' : 'none'),
+                lrclibId: t.lrclibId != null ? t.lrclibId : null,
+                customLyrics: Array.isArray(t.customLyrics) ? t.customLyrics : []
+            });
+        }
+
+        const manifest = {
+            format: 'webPod-backup',
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            app: 'webPod',
+            trackCount: manifestTracks.length,
+            tracks: manifestTracks
+        };
+        zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+
+        status.textContent = 'Compressing…';
+        bar.style.width = '95%';
+        const blob = await zip.generateAsync(
+            { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
+            (meta) => {
+                bar.style.width = Math.min(99, 50 + meta.percent / 2) + '%';
+            }
+        );
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        a.href = url;
+        a.download = `webPod-backup-${stamp}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        bar.style.width = '100%';
+        status.textContent = `Done — ${total} track${total === 1 ? '' : 's'} exported.`;
+        lbl.textContent = 'Download ZIP backup';
+    } catch (err) {
+        console.error(err);
+        status.textContent = 'Export failed: ' + (err.message || err);
+        lbl.textContent = 'Download ZIP backup';
+    } finally {
+        btn.disabled = tracks.length === 0;
+        setTimeout(() => prog.classList.add('hidden'), 2500);
+    }
+}
+
+async function importZip(file) {
+    if (!file) return;
+    const prog = document.getElementById('importProgress');
+    const bar = document.getElementById('importBar');
+    const status = document.getElementById('importStatus');
+    const lbl = document.getElementById('lblImport');
+    prog.classList.remove('hidden');
+    lbl.textContent = 'Reading ZIP…';
+    bar.style.width = '5%';
+
+    try {
+        const zip = await JSZip.loadAsync(file);
+        bar.style.width = '15%';
+        status.textContent = 'Parsing manifest…';
+
+        const manifestFile = zip.file('manifest.json');
+        if (!manifestFile) throw new Error('manifest.json not found in ZIP');
+
+        const manifestText = await manifestFile.async('string');
+        const manifest = JSON.parse(manifestText);
+
+        if (!manifest || !Array.isArray(manifest.tracks)) {
+            throw new Error('Invalid manifest: missing tracks array');
+        }
+
+        const list = manifest.tracks;
+        let imported = 0;
+        let skipped = 0;
+
+        for (let i = 0; i < list.length; i++) {
+            const meta = list[i];
+            const pct = 15 + Math.round(((i + 1) / list.length) * 80);
+            bar.style.width = pct + '%';
+            status.textContent = `Importing ${i + 1} / ${list.length}: ${meta.title || meta.id}`;
+
+            if (!meta.id) {
+                skipped++;
+                continue;
+            }
+
+            let fileBuffer = null;
+            const audioPath = meta.audioFile || (meta.id ? `audio/${meta.id}` : null);
+            if (audioPath) {
+                // Try exact path, then any file under audio/ matching the id prefix
+                let audioEntry = zip.file(audioPath);
+                if (!audioEntry) {
+                    // Fallback: search by id in filename
+                    const candidates = Object.keys(zip.files).filter(p =>
+                        p.startsWith('audio/') && p.includes(sanitizeFileName(meta.id))
+                    );
+                    if (candidates.length) audioEntry = zip.file(candidates[0]);
+                }
+                if (audioEntry) {
+                    fileBuffer = await audioEntry.async('arraybuffer');
+                }
+            }
+
+            if (!fileBuffer) {
+                console.warn('No audio for track', meta.id);
+                skipped++;
+                continue;
+            }
+
+            const trackObj = {
+                id: meta.id,
+                title: meta.title || 'Unknown',
+                artist: meta.artist || 'Unknown Artist',
+                fileName: meta.fileName || (meta.audioFile ? meta.audioFile.split('/').pop() : 'audio.mp3'),
+                mimeType: meta.mimeType || 'audio/mpeg',
+                size: meta.size || fileBuffer.byteLength,
+                fileBuffer: fileBuffer,
+                customLyrics: Array.isArray(meta.customLyrics) ? meta.customLyrics : [],
+                lyricOffset: typeof meta.lyricOffset === 'number' ? meta.lyricOffset : 0.0,
+                lyricsSource: meta.lyricsSource || (meta.customLyrics && meta.customLyrics.length ? 'custom' : 'none'),
+                lrclibId: meta.lrclibId != null ? meta.lrclibId : null
+            };
+
+            await saveTrackToDB(trackObj);
+            imported++;
+        }
+
+        bar.style.width = '100%';
+        status.textContent = `Imported ${imported} track${imported === 1 ? '' : 's'}${skipped ? `, skipped ${skipped}` : ''}.`;
+        lbl.textContent = 'Choose ZIP file…';
+        await refresh();
+    } catch (err) {
+        console.error(err);
+        status.textContent = 'Import failed: ' + (err.message || err);
+        lbl.textContent = 'Choose ZIP file…';
+    } finally {
+        setTimeout(() => prog.classList.add('hidden'), 3500);
+        document.getElementById('fileImportZip').value = '';
+    }
+}
+
+document.getElementById('btnExport').addEventListener('click', exportZip);
+document.getElementById('btnRefresh').addEventListener('click', refresh);
+document.getElementById('fileImportZip').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) importZip(f);
+});
+
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        await initDB();
+        await refresh();
+    } catch (e) {
+        document.getElementById('dbStatus').innerHTML =
+            `<i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1"></i> DB error`;
+        document.getElementById('trackList').innerHTML =
+            `<div class="p-8 text-center text-rose-400 text-xs">Failed to open IndexedDB: ${escapeHtml(e.message || e)}</div>`;
+    }
+});
+</script>
+</body>
+</html>
