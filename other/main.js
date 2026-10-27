@@ -835,16 +835,18 @@ function updatePreviewCaption(activeIdx) {
     }
 }
 
-// Shrink the mobile LCD caption text until it fits its box (prevents oversized/zoomed lyrics)
+// Size the mobile LCD caption so the lyrics strip is only as tall as its text needs,
+// shrinking the font if the text would take more than ~22% of the screen height.
 function fitMobilePreviewText() {
     const el = document.getElementById('mobileFnfPreviewText');
     if (!el) return;
     const box = el.parentElement;
-    if (!box || !box.clientHeight || !box.clientWidth) return;
-    let size = 26;
+    if (!box || !box.clientWidth) return;
+    const maxH = Math.max(48, Math.floor(window.innerHeight * 0.22));
+    let size = Math.max(14, Math.min(30, Math.round(window.innerHeight * 0.04)));
     el.style.fontSize = size + 'px';
     el.style.lineHeight = '1.1';
-    while (size > 11 && (el.scrollHeight > box.clientHeight - 6 || el.scrollWidth > box.clientWidth)) {
+    while (size > 11 && (el.scrollHeight > maxH || el.scrollWidth > box.clientWidth)) {
         size -= 1;
         el.style.fontSize = size + 'px';
     }
