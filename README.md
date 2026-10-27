@@ -2,6 +2,8 @@
 
 A retro iPod-style music player that runs entirely in your browser. Your songs are stored locally, so nothing is uploaded anywhere\*.
 
+If you wanna run the code locally I recommend cloning the repo or downloading the code using the "Code <>" button and run the openinchrome.bat file (assuming you have chrome installed).
+
 ## Features
 
 #### Player
