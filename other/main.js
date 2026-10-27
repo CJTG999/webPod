@@ -22,9 +22,41 @@ const state = {
         showUpload: true,
         showDsp: true,
         clickSound: true,
-        lowLatencyLyrics: true    // rAF-driven lyric updates for minimal lag
+        lowLatencyLyrics: true,   // rAF-driven lyric updates for minimal lag
+        disableProfanityFilter: false // requires passcode to enable
     }
 };
+
+// Passcode required to disable the profanity filter (change this to your own)
+const PROFANITY_PASSCODE = 'webpod';
+const SETTINGS_STORAGE_KEY = 'webPodSettings_v1';
+
+// Persist / restore user settings so they survive reloads (esp. PWA on mobile)
+function saveSettingsToStorage() {
+    try {
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state.settings));
+    } catch (e) {
+        console.warn('Could not save settings:', e);
+    }
+}
+
+function loadSettingsFromStorage() {
+    try {
+        const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        if (saved && typeof saved === 'object') {
+            Object.keys(state.settings).forEach(k => {
+                if (k in saved && typeof saved[k] === typeof state.settings[k]) {
+                    state.settings[k] = saved[k];
+                }
+            });
+        }
+    } catch (e) {
+        console.warn('Could not load settings:', e);
+    }
+}
+loadSettingsFromStorage();
 
 // Platform Detection Logic
 const urlParams = new URLSearchParams(window.location.search);
@@ -44,6 +76,7 @@ let biquadFilters = [];    // 5-band Equalizer filters
 let bassFilter = null;     // Lowshelf Bass Boost filter
 let analyserNode = null;   // Visualizer analyser
 let isBassBoosted = false;
+let currentObjectUrl = null; // active blob URL for the loaded track
 // IndexedDB Storage Database Handle
 let db = null;
 const DB_NAME = 'webPodMemoryDB';
@@ -62,6 +95,24 @@ if (isMobilePlatform) {
             document.getElementById('mobileDashboardContainer').appendChild(dash);
             dash.classList.remove('min-w-[300px]', 'lg:max-w-md');
         }
+
+        // The lyrics panel is hidden on mobile, so move the timing sliders into the menu
+        const timingBox = document.getElementById('mobileLyricControls');
+        ['lyricOffsetControl', 'lyricRateControl'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && timingBox) timingBox.appendChild(el);
+        });
+
+        // Mobile beta disclaimer (once per app launch)
+        let seen = false;
+        try { seen = sessionStorage.getItem('webPodBetaSeen') === '1'; } catch (e) {}
+        if (!seen) {
+            document.getElementById('modalMobileBeta')?.classList.remove('hidden');
+        }
+        document.getElementById('btnCloseMobileBeta')?.addEventListener('click', () => {
+            document.getElementById('modalMobileBeta').classList.add('hidden');
+            try { sessionStorage.setItem('webPodBetaSeen', '1'); } catch (e) {}
+        });
     });
 } else {
     document.documentElement.classList.add('is-pc');
@@ -95,7 +146,7 @@ async function loadBadWords() {
 
 // Censor a given text string using loaded badwords
 function filterProfanity(text) {
-    if (!text || state.badwords.length === 0) return text;
+    if (!text || state.badwords.length === 0 || state.settings.disableProfanityFilter) return text;
     let filtered = text;
     state.badwords.forEach(badword => {
         if (!badword) return;
@@ -162,11 +213,48 @@ async function removeTrackFromDB(id) {
     tx.objectStore('tracks').delete(id);
 }
 
+function attachAudioElementEvents() {
+    audioElement.addEventListener('timeupdate', onTimeUpdate);
+    audioElement.addEventListener('ended', onTrackEnded);
+    audioElement.addEventListener('play', () => {
+        state.isPlaying = true;
+        updateLcdUI();
+        startLowLatencyLyricLoop();
+    });
+    audioElement.addEventListener('pause', () => {
+        state.isPlaying = false;
+        updateLcdUI();
+        stopLowLatencyLyricLoop();
+    });
+    // Re-apply the chosen playback rate once media is ready (src changes reset it)
+    audioElement.addEventListener('loadedmetadata', applyPlaybackRate);
+}
+
+function applyPlaybackRate() {
+    if (!audioElement) return;
+    const slider = document.getElementById('sliderSpeed');
+    const rate = parseFloat(slider && slider.value) || 1.0;
+    audioElement.defaultPlaybackRate = rate;
+    audioElement.playbackRate = rate;
+    audioElement.preservesPitch = true;
+    audioElement.webkitPreservesPitch = true;
+}
+
 function initAudioEngine() {
-    if (audioCtx) return;
+    if (audioElement) return;
     // Create HTML audio element
     audioElement = new Audio();
     audioElement.crossOrigin = "anonymous";
+    audioElement.preload = 'auto';
+
+    // MOBILE: play straight through the <audio> element. Routing through Web Audio
+    // gets silenced when the app is backgrounded and breaks with playbackRate changes.
+    if (isMobilePlatform) {
+        attachAudioElementEvents();
+        setupMediaSession();
+        return;
+    }
+
     // Create Web Audio Context
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     audioCtx = new AudioContext();
@@ -201,23 +289,43 @@ function initAudioEngine() {
     bassFilter.connect(analyserNode);
     analyserNode.connect(audioCtx.destination);
     // Audio Event Handlers
-    audioElement.addEventListener('timeupdate', onTimeUpdate);
-    audioElement.addEventListener('ended', onTrackEnded);
-    audioElement.addEventListener('play', () => {
-        state.isPlaying = true;
-        updateLcdUI();
-        startLowLatencyLyricLoop();
-    });
-    audioElement.addEventListener('pause', () => {
-        state.isPlaying = false;
-        updateLcdUI();
-        stopLowLatencyLyricLoop();
-    });
+    attachAudioElementEvents();
 }
+
+// Lock-screen / notification controls so playback keeps going in the background
+function setupMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    try {
+        navigator.mediaSession.setActionHandler('play', () => { if (audioElement) audioElement.play().catch(console.error); });
+        navigator.mediaSession.setActionHandler('pause', () => { if (audioElement) audioElement.pause(); });
+        navigator.mediaSession.setActionHandler('previoustrack', () => playPrevTrack());
+        navigator.mediaSession.setActionHandler('nexttrack', () => playNextTrack());
+    } catch (e) {}
+}
+
+function updateMediaSessionMetadata(track) {
+    if (!isMobilePlatform || !track || !('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
+    try {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: track.title || 'Unknown', artist: track.artist || '' });
+    } catch (e) {}
+}
+
+// Keep UI in sync with the real audio state when returning from the background
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !audioElement) return;
+    if (audioCtx && audioCtx.state === 'suspended' && !audioElement.paused) audioCtx.resume();
+    state.isPlaying = !audioElement.paused;
+    updateLcdUI();
+    renderPlaylist();
+    if (state.isPlaying) startLowLatencyLyricLoop();
+    onTimeUpdate();
+});
 
 // Synthesizer click sound for tactile wheel feedback
 function playWheelClickSound() {
     if (!state.settings.clickSound) return;
+    // Mobile: a separate AudioContext can interrupt/mute media playback, so skip it
+    if (isMobilePlatform) return;
     try {
         const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
@@ -318,8 +426,8 @@ function togglePlayPause() {
         loadAndPlayTrack(0);
         return;
     }
-    if (!audioCtx) initAudioEngine();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (!audioElement) initAudioEngine();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     if (audioElement.paused) {
         audioElement.play().catch(console.error);
     } else {
@@ -361,8 +469,8 @@ function onTrackEnded() {
 async function loadAndPlayTrack(index) {
     if (index < 0 || index >= state.playlist.length) return;
     
-    if (!audioCtx) initAudioEngine();
-    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    if (!audioElement) initAudioEngine();
+    if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
     state.currentIndex = index;
     const track = state.playlist[index];
 
@@ -389,8 +497,12 @@ async function loadAndPlayTrack(index) {
         const blob = new Blob([track.fileBuffer], { type: track.mimeType || 'audio/mp3' });
         srcUrl = URL.createObjectURL(blob);
     }
+    const prevObjectUrl = currentObjectUrl;
+    currentObjectUrl = track.fileBuffer ? srcUrl : null;
     audioElement.src = srcUrl;
-    audioElement.playbackRate = parseFloat(document.getElementById('sliderSpeed').value) || 1.0;
+    if (prevObjectUrl) setTimeout(() => URL.revokeObjectURL(prevObjectUrl), 2000);
+    applyPlaybackRate();
+    updateMediaSessionMetadata(track);
     
     try {
         await audioElement.play();
@@ -719,8 +831,26 @@ function updatePreviewCaption(activeIdx) {
     }
     if (mobEl && mobEl.textContent !== filteredText) {
         mobEl.textContent = filteredText;
+        fitMobilePreviewText();
     }
 }
+
+// Shrink the mobile LCD caption text until it fits its box (prevents oversized/zoomed lyrics)
+function fitMobilePreviewText() {
+    const el = document.getElementById('mobileFnfPreviewText');
+    if (!el) return;
+    const box = el.parentElement;
+    if (!box || !box.clientHeight || !box.clientWidth) return;
+    let size = 26;
+    el.style.fontSize = size + 'px';
+    el.style.lineHeight = '1.1';
+    while (size > 11 && (el.scrollHeight > box.clientHeight - 6 || el.scrollWidth > box.clientWidth)) {
+        size -= 1;
+        el.style.fontSize = size + 'px';
+    }
+}
+window.addEventListener('resize', () => { if (isMobilePlatform) fitMobilePreviewText(); });
+window.addEventListener('orientationchange', () => { if (isMobilePlatform) setTimeout(fitMobilePreviewText, 250); });
 
 // Fast lyric-only update using offset and independent captionSpeed multiplier
 function updateLyricsOnly() {
@@ -742,6 +872,8 @@ function updateLyricsOnly() {
         updatePreviewCaption(activeIdx);
     }
     if (state.lyricsViewMode === 'preview' && !isMobilePlatform) return;
+    // Mobile: the list panel is hidden; skip list scrolling/zooming entirely
+    if (isMobilePlatform) return;
 
     const container = document.getElementById('lyricsContainer');
     if (!container) return;
@@ -870,6 +1002,7 @@ function updateLcdUI() {
                 bottomHalf.classList.add('flex');
                 topHalf.classList.remove('h-full');
                 topHalf.classList.add('h-1/2');
+                fitMobilePreviewText();
             } else {
                 bottomHalf.classList.add('hidden');
                 bottomHalf.classList.remove('flex');
@@ -1119,7 +1252,7 @@ function setupEventListeners() {
     document.getElementById('sliderSpeed')?.addEventListener('input', (e) => {
         const val = parseFloat(e.target.value);
         document.getElementById('txtSpeedVal').textContent = `${val.toFixed(1)}x`;
-        if (audioElement) audioElement.playbackRate = val;
+        applyPlaybackRate();
     });
     // Bass Boost Toggle
     document.getElementById('btnToggleBass')?.addEventListener('click', () => {
@@ -1142,7 +1275,7 @@ function setupEventListeners() {
     document.getElementById('btnResetDsp')?.addEventListener('click', () => {
         document.getElementById('sliderSpeed').value = 1.0;
         document.getElementById('txtSpeedVal').textContent = '1.0x';
-        if (audioElement) audioElement.playbackRate = 1.0;
+        applyPlaybackRate();
         isBassBoosted = false;
         if (bassFilter) bassFilter.gain.value = 0;
         const dot = document.getElementById('dotBass');
@@ -1454,7 +1587,33 @@ function savePreferencesUI() {
     state.settings.showDsp = document.getElementById('chkShowDsp').checked;
     state.settings.clickSound = document.getElementById('chkClickSound').checked;
     state.settings.lowLatencyLyrics = document.getElementById('chkLowLatencyLyrics').checked;
-    
+    saveSettingsToStorage();
+    applySettingsToApp();
+    document.getElementById('modalSettings').classList.add('hidden');
+}
+
+// Push saved settings values into the settings form controls
+function populateSettingsForm() {
+    const s = state.settings;
+    const set = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
+    set('selectLcdTheme', el => el.value = s.lcdTheme);
+    set('selectVisMode', el => el.value = s.visMode);
+    set('inputMusixmatchKey', el => el.value = s.musixmatchKey || '');
+    set('chkShowLyrics', el => el.checked = s.showLyrics);
+    set('chkShowUpload', el => el.checked = s.showUpload);
+    set('chkShowDsp', el => el.checked = s.showDsp);
+    set('chkClickSound', el => el.checked = s.clickSound);
+    set('chkLowLatencyLyrics', el => el.checked = s.lowLatencyLyrics);
+    set('chkDisableProfanity', el => el.checked = s.disableProfanityFilter);
+    const radio = document.querySelector(`input[name="lyricsApi"][value="${s.lyricsApi}"]`);
+    if (radio) radio.checked = true;
+}
+
+// Apply current state.settings to the live UI
+function applySettingsToApp() {
+    const lcdTheme = state.settings.lcdTheme;
+    const lyricsApi = state.settings.lyricsApi;
+
     if (state.settings.lowLatencyLyrics && state.isPlaying) {
         startLowLatencyLyricLoop();
     } else {
@@ -1490,8 +1649,34 @@ function savePreferencesUI() {
     
     updateLcdUI();
     const tag = document.getElementById('lyricSourceTag');
-    if (tag) tag.textContent = lyricsApi.toUpperCase();
-    document.getElementById('modalSettings').classList.add('hidden');
+    if (tag && !(lyricsApi === 'lrclib' && tag.querySelector('a'))) tag.textContent = lyricsApi.toUpperCase();
+}
+
+// Profanity filter toggle: turning the filter OFF requires a passcode
+function setupProfanityToggle() {
+    const chk = document.getElementById('chkDisableProfanity');
+    if (!chk) return;
+    chk.addEventListener('change', () => {
+        if (chk.checked) {
+            const entered = window.prompt('Enter passcode to disable the profanity filter:');
+            if (entered !== PROFANITY_PASSCODE) {
+                chk.checked = false;
+                if (entered !== null) alert('Incorrect passcode.');
+                return;
+            }
+            state.settings.disableProfanityFilter = true;
+        } else {
+            state.settings.disableProfanityFilter = false;
+        }
+        saveSettingsToStorage();
+        // Re-render so already-displayed lyrics reflect the change
+        if (state.currentLyrics.length > 0) {
+            const idx = state.activeLyricIndex;
+            renderLyrics();
+            state.activeLyricIndex = -1;
+            if (audioElement) updateLyricsOnly();
+        }
+    });
 }
 
 function updateStorageStats() {
@@ -1517,6 +1702,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadBadWords();
     setupEventListeners();
     setupKeyboardControls();
+    setupProfanityToggle();
+    populateSettingsForm();
+    applySettingsToApp();
     try {
         await initDB();
         const savedTracks = await loadTracksFromDB();

@@ -119,7 +119,7 @@
                     </a>
                 </div>
                 <!-- Lyric Delay / Offset Slider Control -->
-                <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex items-center justify-between gap-3 text-xs">
+                <div id="lyricOffsetControl" class="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex items-center justify-between gap-3 text-xs">
                     <span class="text-slate-400 font-medium shrink-0 flex items-center gap-1">
                         <i class="fa-solid fa-clock-rotate-left text-cyan-400 text-[10px]"></i> Offset:
                     </span>
@@ -128,7 +128,7 @@
                     <button id="btnResetLyricOffset" title="Reset offset to 0s" class="text-[10px] bg-black hover:bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 transition">Reset</button>
                 </div>
                 <!-- Caption Speed Rate Slider -->
-                <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex items-center justify-between gap-3 text-xs">
+                <div id="lyricRateControl" class="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex items-center justify-between gap-3 text-xs">
                     <span class="text-slate-400 font-medium shrink-0 flex items-center gap-1">
                         <i class="fa-solid fa-gauge-high text-cyan-400 text-[10px]"></i> Rate:
                     </span>
@@ -196,7 +196,7 @@
 
                     <!-- Mobile Lyrics Preview (Hidden on PC, dynamically shown on Mobile) -->
                     <div id="lcdBottomHalf" class="hidden flex-1 flex-col items-center justify-center border-t border-current/20 relative pt-2 z-10 h-1/2 overflow-hidden">
-                        <div id="mobileFnfPreviewText" class="font-lcd text-xl uppercase text-center tracking-wider w-full px-2 break-words line-clamp-3 overflow-hidden text-ellipsis"></div>
+                        <div id="mobileFnfPreviewText" class="font-lcd text-xl uppercase text-center tracking-wider w-full px-2 break-words overflow-hidden"></div>
                     </div>
                 </div>
                 <!-- BOTTOM TACTILE CLICK WHEEL -->
@@ -281,7 +281,7 @@
                 <!-- Hardware Acceleration Quick Controls -->
                 <div class="grid grid-cols-2 gap-3 text-xs">
                     <!-- Bass Boost Toggle -->
-                    <div class="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div class="hidden-on-mobile bg-slate-950/50 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
                         <span class="font-medium text-slate-300">Bass Boost</span>
                         <button id="btnToggleBass" class="w-10 h-5 bg-slate-700 rounded-full transition relative p-0.5">
                             <div id="dotBass" class="w-4 h-4 bg-white rounded-full transition transform translate-x-0"></div>
@@ -297,7 +297,7 @@
                     </div>
                 </div>
                 <!-- Equalizer Preset Selector -->
-                <div class="flex items-center justify-between gap-2 text-xs">
+                <div class="hidden-on-mobile flex items-center justify-between gap-2 text-xs">
                     <span class="text-slate-400">EQ Preset:</span>
                     <select id="selectEqPreset" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-cyan-500">
                         <option value="flat">Flat / Normal</option>
@@ -321,7 +321,13 @@
         </div>
         <div class="flex-1 overflow-y-auto p-4 space-y-5 flex flex-col">
             <!-- Mobile Dashboard Container -->
+            <!-- Mobile Lyric Timing Controls (offset / rate moved here on mobile) -->
+            <div class="space-y-2">
+                <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Lyric Timing</h4>
+                <div id="mobileLyricControls" class="flex flex-col gap-2"></div>
+            </div>
             <div id="mobileDashboardContainer" class="flex flex-col gap-4 flex-1"></div>
+            <p class="text-[11px] text-slate-500 text-center">Mobile Beta &mdash; DM me on Discord with bugs or suggestions.</p>
             <!-- Mobile Navigation Utilities -->
             <div class="space-y-3 mt-auto">
                 <button id="btnMobileSettings" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition shadow-md">
@@ -416,6 +422,13 @@
                         <span class="text-slate-300">Click Wheel Audio Feedback</span>
                         <input type="checkbox" id="chkClickSound" checked class="accent-cyan-500">
                     </label>
+                    <label class="flex items-center justify-between p-2 bg-slate-950/60 border border-slate-800 rounded-lg cursor-pointer">
+                        <div>
+                            <span class="text-slate-300 block">Disable Profanity Filter</span>
+                            <span class="text-[10px] text-slate-500">Requires a passcode to turn on.</span>
+                        </div>
+                        <input type="checkbox" id="chkDisableProfanity" class="accent-cyan-500 shrink-0 ml-3">
+                    </label>
                 </div>
             </div>
             <!-- Playback Performance -->
@@ -434,6 +447,15 @@
             <div class="pt-2">
                 <button id="btnSaveSettings" class="w-full bg-black hover:bg-slate-900 border border-slate-700 text-white font-semibold py-2 rounded-xl text-xs transition shadow-md">Save Preferences</button>
             </div>
+        </div>
+    </div>
+    <!-- MOBILE BETA DISCLAIMER -->
+    <div id="modalMobileBeta" class="hidden fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6">
+        <div class="bg-slate-900 border border-cyan-700/60 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl text-center">
+            <div class="text-cyan-400 text-2xl"><i class="fa-solid fa-flask"></i></div>
+            <h3 class="text-base font-bold text-white">webPod Mobile Beta</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">The mobile version is still in beta, so things may break. Found a bug or have a suggestion? DM me on Discord!</p>
+            <button id="btnCloseMobileBeta" class="w-full bg-cyan-600 hover:bg-cyan-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 rounded-lg transition shadow-md">Got it</button>
         </div>
     </div>
     <!-- PASTE CAPTIONS TEXT MODAL -->

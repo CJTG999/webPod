@@ -116,17 +116,23 @@
 /* ==============================================================
    PWA MOBILE LAYOUT OVERRIDES (Activated by .is-mobile class)
 ============================================================== */
+/* Top bar is removed on mobile (menu is reached via the click wheel MENU button) */
 .is-mobile header {
-    position: fixed;
-    top: 0;
-    width: 100%;
-    z-index: 50;
+    display: none !important;
 }
+
+/* Prevent iOS auto-zoom / double-tap zoom */
+html.is-mobile { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.is-mobile, .is-mobile * { touch-action: manipulation; }
+.is-mobile input, .is-mobile select, .is-mobile textarea { font-size: 16px !important; }
+.is-mobile .lyric-line.active { transform: none; }
 
 .is-mobile main {
     padding: 0;
-    margin-top: 3.5rem;
-    height: calc(100vh - 3.5rem);
+    padding-top: env(safe-area-inset-top);
+    margin-top: 0;
+    height: 100vh;
+    height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
