@@ -45,5 +45,5 @@ If you wanna run the code locally I recommend cloning the repo or downloading th
 |`tools/captionsync.html`|SyncMaster: time existing lyrics and export `.srt` or `.lrc`|
 |`other/manager.html`|Backup Manager: export and import your library as a ZIP|
 
-* I'm planning on making a way to save lyrics and some songs online (not publicly)
+*I'm planning on making a way to save lyrics and some songs online (not publicly)
 
