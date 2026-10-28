@@ -28,7 +28,7 @@ const state = {
 };
 
 // Passcode required to disable the profanity filter (change this to your own)
-const PROFANITY_PASSCODE = 'webpod';
+const PROFANITY_PASSCODE = 'gagglesuckslol';
 const SETTINGS_STORAGE_KEY = 'webPodSettings_v1';
 
 // Persist / restore user settings so they survive reloads (esp. PWA on mobile)
