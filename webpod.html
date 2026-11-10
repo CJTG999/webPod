@@ -281,6 +281,14 @@
                 </div>
                 <!-- Hardware Acceleration Quick Controls -->
                 <div class="grid grid-cols-2 gap-3 text-xs">
+                    <!-- Master Volume -->
+                    <div class="col-span-2 bg-slate-950/50 p-2.5 rounded-xl border border-slate-800">
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <label for="sliderVolume" class="text-slate-400">Volume</label>
+                            <span id="txtVolumeVal" class="text-cyan-400 font-bold">100%</span>
+                        </div>
+                        <input type="range" id="sliderVolume" min="1" max="200" step="1" value="100" class="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer">
+                    </div>
                     <!-- Bass Boost Toggle -->
                     <div class="hidden-on-mobile bg-slate-950/50 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
                         <span class="font-medium text-slate-300">Bass Boost</span>

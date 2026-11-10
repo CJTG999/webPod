@@ -21,6 +21,7 @@ const state = {
         showLyrics: true,
         showUpload: true,
         showDsp: true,
+        audioVolume: 100,        // 1 - 200 (%)
         clickSound: true,
         lowLatencyLyrics: true,   // rAF-driven lyric updates for minimal lag
         disableProfanityFilter: false, // requires passcode to enable
@@ -98,6 +99,7 @@ let audioElement = null;
 let sourceNode = null;
 let biquadFilters = [];    // 5-band Equalizer filters
 let bassFilter = null;     // Lowshelf Bass Boost filter
+let volumeGain = null;     // Master gain (supports amplification above 100%)
 let analyserNode = null;   // Visualizer analyser
 let isBassBoosted = false;
 let currentObjectUrl = null; // active blob URL for the loaded track
@@ -314,6 +316,7 @@ function initAudioEngine() {
     audioElement = new Audio();
     audioElement.crossOrigin = "anonymous";
     audioElement.preload = 'auto';
+    applyAudioVolume();
 
     // MOBILE: play straight through the <audio> element. Routing through Web Audio
     // gets silenced when the app is backgrounded and breaks with playbackRate changes.
@@ -355,11 +358,22 @@ function initAudioEngine() {
     });
     previousNode.connect(bassFilter);
     bassFilter.connect(analyserNode);
-    analyserNode.connect(audioCtx.destination);
+    volumeGain = audioCtx.createGain();
+    volumeGain.gain.value = Math.max(0.01, Math.min(2, (state.settings.audioVolume || 100) / 100));
+    analyserNode.connect(volumeGain);
+    volumeGain.connect(audioCtx.destination);
     visConfigureAnalyser();   // apply the chosen visualizer's fft size / smoothing
     // Audio Event Handlers
     attachAudioElementEvents();
     setupMediaSession();      // hardware media keys on desktop too
+}
+
+function applyAudioVolume() {
+    const volume = Math.max(1, Math.min(200, Number(state.settings.audioVolume) || 100));
+    state.settings.audioVolume = volume;
+    if (volumeGain) volumeGain.gain.value = volume / 100;
+    // The mobile direct playback path uses the native media volume (limited to 100%).
+    if (audioElement && isMobilePlatform) audioElement.volume = Math.min(1, volume / 100);
 }
 
 // Lock-screen / notification controls so playback keeps going in the background
@@ -1192,6 +1206,11 @@ async function importZipToMain(file) {
 }
 
 function setupEventListeners() {
+    const sliderVolume = document.getElementById('sliderVolume');
+    const txtVolumeVal = document.getElementById('txtVolumeVal');
+    state.settings.audioVolume = Math.max(1, Math.min(200, Number(state.settings.audioVolume) || 100));
+    if (sliderVolume) sliderVolume.value = state.settings.audioVolume;
+    if (txtVolumeVal) txtVolumeVal.textContent = `${state.settings.audioVolume}%`;
     // Click Wheel Button Action Routing
     const wheelButtons = [
         { id: 'btnWheelMenu', action: 'menu' },
@@ -1318,6 +1337,13 @@ function setupEventListeners() {
         document.getElementById('txtSpeedVal').textContent = `${val.toFixed(1)}x`;
         applyPlaybackRate();
     });
+    // Master volume slider
+    document.getElementById('sliderVolume')?.addEventListener('input', (e) => {
+        state.settings.audioVolume = Number(e.target.value);
+        document.getElementById('txtVolumeVal').textContent = `${state.settings.audioVolume}%`;
+        applyAudioVolume();
+        saveSettingsToStorage();
+    });
     // Bass Boost Toggle
     document.getElementById('btnToggleBass')?.addEventListener('click', () => {
         isBassBoosted = !isBassBoosted;
@@ -1337,6 +1363,11 @@ function setupEventListeners() {
     });
     // DSP Reset Button
     document.getElementById('btnResetDsp')?.addEventListener('click', () => {
+        state.settings.audioVolume = 100;
+        document.getElementById('sliderVolume').value = 100;
+        document.getElementById('txtVolumeVal').textContent = '100%';
+        applyAudioVolume();
+        saveSettingsToStorage();
         document.getElementById('sliderSpeed').value = 1.0;
         document.getElementById('txtSpeedVal').textContent = '1.0x';
         applyPlaybackRate();
