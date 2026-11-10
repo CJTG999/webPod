@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="./assets/favicon.png">
     <link rel="icon" type="image/png" href="https://codehs.com/uploads/dd0e0dfb0e66f976a74ea5d1dac6e8eb">
     <link rel="manifest" id="manifestLink">
-    <title>webPod Legacy</title>
+    <title>webPod v1 (beta)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -23,6 +23,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- Stylesheet -->
     <link rel="stylesheet" href="./other/main.css">
+    <link rel="stylesheet" href="./other/themes.css">
     
     <script>
         tailwind.config = {
@@ -62,7 +63,7 @@
             </div>
         </div>
         <div class="flex items-center space-x-3 text-xs text-slate-400 hidden-on-mobile">
-            <a href="./other/manager.html" title="Export / Import library as ZIP" class="hidden sm:inline-flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700 px-2.5 py-1 rounded-full border border-slate-700 transition text-cyan-300">
+            <a href="./tools/manager.html" title="Export / Import library as ZIP" class="hidden sm:inline-flex items-center gap-1.5 bg-slate-800/80 hover:bg-slate-700 px-2.5 py-1 rounded-full border border-slate-700 transition text-cyan-300">
                 <i class="fa-solid fa-file-zipper"></i> Backup
             </a>
             <span class="hidden md:inline-flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700">
@@ -384,11 +385,32 @@
                     <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
                         <label class="block text-slate-400 mb-1">iPod & LCD Color Theme</label>
                         <select id="selectLcdTheme" class="w-full bg-slate-900 border border-slate-700 text-white rounded px-2 py-1 focus:outline-none">
-                            <option value="theme-classic">Classic Mono Grey</option>
-                            <option value="theme-green">Neon Matrix Green</option>
-                            <option value="theme-blue">Ice Blue LCD</option>
-                            <option value="theme-amber">Amber Glow</option>
-                            <option value="theme-pink">Cyberpunk Pink</option>
+                            <optgroup label="Classic">
+                                <option value="theme-classic">Classic Mono Grey</option>
+                                <option value="theme-green">Neon Matrix Green</option>
+                                <option value="theme-blue">Ice Blue LCD</option>
+                                <option value="theme-amber">Amber Glow</option>
+                                <option value="theme-pink">Cyberpunk Pink</option>
+                            </optgroup>
+                            <optgroup label="Dark">
+                                <option value="theme-midnight">Midnight Blue</option>
+                                <option value="theme-graphite">Graphite</option>
+                                <option value="theme-ocean">Deep Ocean</option>
+                                <option value="theme-mint">Mint Terminal</option>
+                                <option value="theme-crimson">Crimson</option>
+                                <option value="theme-sunset">Sunset</option>
+                                <option value="theme-gold">Gold Rush</option>
+                                <option value="theme-lavender">Lavender</option>
+                                <option value="theme-vapor">Vaporwave</option>
+                            </optgroup>
+                            <optgroup label="Light / Retro">
+                                <option value="theme-gameboy">Game Boy</option>
+                                <option value="theme-paper">E-Ink Paper</option>
+                                <option value="theme-sakura">Sakura</option>
+                            </optgroup>
+                            <optgroup label="Yours">
+                                <option value="theme-custom">Custom (pick colours below)</option>
+                            </optgroup>
                         </select>
                     </div>
                     <!-- Visualizer Mode -->
@@ -397,9 +419,118 @@
                         <select id="selectVisMode" class="w-full bg-slate-900 border border-slate-700 text-white rounded px-2 py-1 focus:outline-none">
                             <option value="bar">Bar Visualizer</option>
                             <option value="wave">Waveform</option>
+                            <option value="fine">Fine Spectrum</option>
+                            <option value="mirror">Mirror Bars</option>
+                            <option value="spectrum">Smooth Spectrum</option>
+                            <option value="scope">Oscilloscope</option>
+                            <option value="led">LED Columns</option>
+                            <option value="peaks">Peak Meters</option>
+                            <option value="dots">Pulse Dots</option>
+                            <option value="radial">Radial Burst</option>
+                            <option value="vu">VU Meter</option>
                             <option value="none">Disabled (Best Performance)</option>
                         </select>
                     </div>
+                </div>
+            </div>
+            <!-- Visualizer options -->
+            <div class="space-y-3">
+                <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Visualizer</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl ">
+                        <label class="block text-slate-400 mb-1">Colour</label>
+                        <select id="selectVisColor" class="w-full bg-slate-900 border border-slate-700 text-white rounded px-2 py-1 focus:outline-none"><option value="lcd">Match LCD</option><option value="accent">Cyan accent</option><option value="rainbow">Rainbow</option><option value="custom">Custom colour</option></select>
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="block text-slate-400 mb-1">Custom visualizer colour</label>
+                        <input type="color" id="colorVisCustom" class="color-swatch">
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="flex justify-between text-slate-400 mb-1"><span>Sensitivity</span><span class="range-val" data-for="rangeVisSens" data-unit="x"></span></label>
+                        <input type="range" id="rangeVisSens" min="0.5" max="2" step="0.05" class="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer">
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="flex justify-between text-slate-400 mb-1"><span>Smoothing</span><span class="range-val" data-for="rangeVisSmooth" data-unit=""></span></label>
+                        <input type="range" id="rangeVisSmooth" min="0" max="0.95" step="0.05" class="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer">
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl ">
+                        <label class="block text-slate-400 mb-1">Height</label>
+                        <select id="selectVisHeight" class="w-full bg-slate-900 border border-slate-700 text-white rounded px-2 py-1 focus:outline-none"><option value="28">Compact</option><option value="40">Normal</option><option value="56">Tall</option><option value="72">Extra tall</option></select>
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl ">
+                        <label class="block text-slate-400 mb-1">Frame rate</label>
+                        <select id="selectVisFps" class="w-full bg-slate-900 border border-slate-700 text-white rounded px-2 py-1 focus:outline-none"><option value="60">60 fps</option><option value="30">30 fps (lighter)</option><option value="20">20 fps</option><option value="15">15 fps (lightest)</option><option value="0">Unlimited</option></select>
+                    </div>
+                </div>
+            </div>
+            <!-- Appearance -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Appearance</h4>
+                    <button type="button" id="btnResetAppearance" class="text-[10px] bg-black hover:bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 transition">Reset look</button>
+                </div>
+                <p class="text-[10px] text-slate-500">Changes preview live &mdash; press Save Preferences to keep them.</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="block text-slate-400 mb-1">Custom: LCD background</label>
+                        <input type="color" id="colorLcdBg" class="color-swatch">
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="block text-slate-400 mb-1">Custom: LCD text</label>
+                        <input type="color" id="colorLcdFg" class="color-swatch">
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="block text-slate-400 mb-1">Custom: case (top)</label>
+                        <input type="color" id="colorCaseA" class="color-swatch">
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="block text-slate-400 mb-1">Custom: case (bottom)</label>
+                        <input type="color" id="colorCaseB" class="color-swatch">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl ">
+                        <label class="block text-slate-400 mb-1">Click wheel</label>
+                        <select id="selectWheelStyle" class="w-full bg-slate-900 border border-slate-700 text-white rounded px-2 py-1 focus:outline-none"><option value="white">White</option><option value="graphite">Graphite</option><option value="black">Black</option></select>
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl hidden-on-mobile">
+                        <label class="block text-slate-400 mb-1">App background</label>
+                        <select id="selectAppBg" class="w-full bg-slate-900 border border-slate-700 text-white rounded px-2 py-1 focus:outline-none"><option value="default">Default</option><option value="black">Pure black</option><option value="gradient">Deep blue gradient</option><option value="custom">Custom colour</option></select>
+                    </div>
+                    <div class="hidden-on-mobile p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="block text-slate-400 mb-1">App background colour</label>
+                        <input type="color" id="colorAppBg" class="color-swatch">
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="flex justify-between text-slate-400 mb-1"><span>Scanlines</span><span class="range-val" data-for="rangeScanlines" data-unit="%"></span></label>
+                        <input type="range" id="rangeScanlines" min="0" max="100" step="5" class="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer">
+                    </div>
+                    <div class="hidden-on-mobile p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="flex justify-between text-slate-400 mb-1"><span>Player size</span><span class="range-val" data-for="rangePlayerScale" data-unit="%"></span></label>
+                        <input type="range" id="rangePlayerScale" min="70" max="130" step="5" class="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer">
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="flex justify-between text-slate-400 mb-1"><span>Lyric text size</span><span class="range-val" data-for="rangeLyricSize" data-unit="%"></span></label>
+                        <input type="range" id="rangeLyricSize" min="80" max="160" step="5" class="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer">
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="block text-slate-400 mb-1">Lyric highlight colour</label>
+                        <input type="color" id="colorLyricActive" class="color-swatch">
+                    </div>
+                    <div class="p-2.5 bg-slate-950/60 border border-slate-800 rounded-xl">
+                        <label class="flex justify-between text-slate-400 mb-1"><span>Click sound volume</span><span class="range-val" data-for="rangeClickVol" data-unit="%"></span></label>
+                        <input type="range" id="rangeClickVol" min="0" max="100" step="5" class="w-full accent-cyan-500 h-1 bg-slate-700 rounded cursor-pointer">
+                    </div>
+                </div>
+                <div class="space-y-2 text-xs">
+                    <label class="flex items-center justify-between p-2 bg-slate-950/60 border border-slate-800 rounded-lg cursor-pointer ">
+                        <div><span class="text-slate-300 block">LCD text glow</span></div>
+                        <input type="checkbox" id="chkLcdGlow" class="accent-cyan-500 shrink-0 ml-3">
+                    </label>
+                    <label class="flex items-center justify-between p-2 bg-slate-950/60 border border-slate-800 rounded-lg cursor-pointer ">
+                        <div><span class="text-slate-300 block">Performance mode</span><span class="text-[10px] text-slate-500 block">Turns off blur effects and caps the visualizer at 30 fps. Good for older PCs / battery.</span></div>
+                        <input type="checkbox" id="chkPerfMode" class="accent-cyan-500 shrink-0 ml-3">
+                    </label>
                 </div>
             </div>
             <!-- UI Visibility Toggles -->
@@ -493,5 +624,6 @@
 
     <!-- Application Script -->
     <script src="./other/main.js"></script>
+    <script src="./other/visualizer.js"></script>
 </body>
 </html>

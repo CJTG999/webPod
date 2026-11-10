@@ -1,0 +1,79 @@
+/* ==========================================================================
+   webPod extra themes, appearance options and customization hooks
+   (loaded after main.css; the original 5 themes live in main.css)
+   Each theme sets: LCD background + text colour, then the iPod case gradient.
+   ========================================================================== */
+
+/* ---- New LCD backlights ------------------------------------------------ */
+.theme-midnight  { background-color: #05070f; color: #7aa2ff; }
+.theme-sunset    { background-color: #2a0f08; color: #ff7a45; }
+.theme-lavender  { background-color: #1f1235; color: #c7a6ff; }
+.theme-mint      { background-color: #0b2a24; color: #6bffd0; }
+.theme-crimson   { background-color: #2b0509; color: #ff4d5e; }
+.theme-gameboy   { background-color: #9bbc0f; color: #0f380f; }
+.theme-paper     { background-color: #e8e4d4; color: #22211c; }
+.theme-ocean     { background-color: #062b3d; color: #58e0ff; }
+.theme-gold      { background-color: #2a2108; color: #ffd23f; }
+.theme-sakura    { background-color: #fbe3ec; color: #7a1f45; }
+.theme-graphite  { background-color: #181818; color: #e6e6e6; }
+.theme-vapor     { background-color: #1b1033; color: #ff71ce; }
+
+/* ---- New case finishes -------------------------------------------------- */
+.ipod-case.theme-midnight { background: linear-gradient(145deg, #1a1f33, #07090f); border-color: #3b4a7a; }
+.ipod-case.theme-sunset   { background: linear-gradient(145deg, #5a1f10, #1f0a05); border-color: #ea580c; }
+.ipod-case.theme-lavender { background: linear-gradient(145deg, #3b2468, #150c26); border-color: #8b5cf6; }
+.ipod-case.theme-mint     { background: linear-gradient(145deg, #11443b, #06201b); border-color: #14b8a6; }
+.ipod-case.theme-crimson  { background: linear-gradient(145deg, #5c0f19, #1f0409); border-color: #dc2626; }
+.ipod-case.theme-gameboy  { background: linear-gradient(145deg, #cfccb9, #a9a691); border-color: #8b8a78; }
+.ipod-case.theme-paper    { background: linear-gradient(145deg, #f7f5ec, #dedac8); border-color: #bdb8a2; }
+.ipod-case.theme-ocean    { background: linear-gradient(145deg, #0b4a66, #031c28); border-color: #0891b2; }
+.ipod-case.theme-gold     { background: linear-gradient(145deg, #6b5316, #241b06); border-color: #ca8a04; }
+.ipod-case.theme-sakura   { background: linear-gradient(145deg, #ffe9f1, #f5c2d6); border-color: #f9a8d4; }
+.ipod-case.theme-graphite { background: linear-gradient(145deg, #3a3a3a, #121212); border-color: #52525b; }
+.ipod-case.theme-vapor    { background: linear-gradient(145deg, #4b1d8f, #0f2a5c); border-color: #05ffa1; }
+
+/* ---- User-defined theme (colours come from Settings -> Appearance) ------ */
+.theme-custom { background-color: var(--c-lcd-bg, #1b1f2a); color: var(--c-lcd-fg, #7df9ff); }
+.ipod-case.theme-custom {
+    background: linear-gradient(145deg, var(--c-case-a, #2b2f3a), var(--c-case-b, #10131a));
+    border-color: var(--c-case-b, #10131a);
+}
+
+/* ---- Click wheel finishes ---------------------------------------------- */
+#clickWheel.wheel-graphite {
+    background: radial-gradient(circle, #4a4a50 0%, #2f2f35 60%, #202025 100%);
+    border-color: #52525b;
+}
+#clickWheel.wheel-black {
+    background: radial-gradient(circle, #1c1c1f 0%, #0f0f11 60%, #070708 100%);
+    border-color: #2a2a2e;
+}
+#clickWheel.wheel-graphite button, #clickWheel.wheel-black button { color: #e5e7eb; }
+#clickWheel.wheel-graphite #btnWheelCenter { background: #3a3a40; border-color: #52525b; }
+#clickWheel.wheel-black #btnWheelCenter { background: #19191c; border-color: #2f2f35; }
+#clickWheel.wheel-graphite #btnWheelCenter > div { background: linear-gradient(to top right, #2d2d32, #46464d); }
+#clickWheel.wheel-black #btnWheelCenter > div { background: linear-gradient(to top right, #0c0c0e, #1b1b1f); }
+
+/* ---- Scanline intensity / LCD glow ------------------------------------- */
+.scanlines { opacity: var(--scan-op, 0.4) !important; }
+.lcd-glow #lcdDisplay,
+.lcd-glow .lcd-preview-stage { text-shadow: 0 0 6px currentColor; }
+
+/* ---- Lyrics customization ---------------------------------------------- */
+.lyric-line { font-size: calc(1em * var(--lyric-scale, 1)); }
+.lyric-line.active { color: var(--lyric-active, #38bdf8); }
+
+/* ---- App background ----------------------------------------------------- */
+html[data-bg="black"], html[data-bg="black"] body { background: #000 !important; }
+html[data-bg="gradient"], html[data-bg="gradient"] body {
+    background: radial-gradient(ellipse at 50% -10%, #1e3a5f 0%, #0b1224 45%, #020617 100%) fixed !important;
+}
+html[data-bg="custom"], html[data-bg="custom"] body { background: var(--app-bg, #0b1020) !important; }
+
+/* ---- Performance mode: drop the GPU-heavy blur effects ------------------ */
+.perf-mode * { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.perf-mode .animate-pulse, .perf-mode .animate-spin { animation: none !important; }
+
+/* ---- Settings modal helpers --------------------------------------------- */
+.range-val { color: #22d3ee; font-family: ui-monospace, monospace; font-weight: 700; min-width: 40px; text-align: right; }
+.color-swatch { width: 100%; height: 26px; padding: 0; border: 1px solid #334155; border-radius: 6px; background: transparent; cursor: pointer; }

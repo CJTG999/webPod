@@ -5,7 +5,7 @@ const LINKS = {
     player:   './webpod.html',          // main webPod player (use ./webpod.html if that's your player file)
     captions: './tools/captions.html', // Caption Studio (Lyric Maker)
     sync:     './tools/captionsync.html', // SyncMaster
-    manager:  './other/manager.html'   // Backup / ZIP manager
+    manager:  './tools/manager.html'   // Backup / ZIP manager
 };
 
 // ---- Content ----

@@ -164,16 +164,63 @@ html.is-mobile { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     justify-content: space-evenly;
 }
 
+/* ---- Responsive mobile sizing ----
+   The click wheel is sized from the screen (smaller of width / height),
+   the LCD fills whatever vertical space is left, and the lyrics strip
+   inside the LCD only takes the height its text needs. */
+.is-mobile .ipod-case {
+    justify-content: flex-start;
+    gap: 2.5dvh;
+    padding-top: calc(env(safe-area-inset-top) + 2dvh);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 2.5dvh);
+    box-sizing: border-box;
+}
+
 .is-mobile #lcdDisplay {
-    height: 40vh;
-    max-height: 350px;
+    flex: 1 1 0;
+    min-height: 150px;
+    height: auto !important;
+    max-height: none;
     border-radius: 12px;
 }
 
-.is-mobile #clickWheel {
-    transform: scale(1.15);
-    margin-top: 2vh;
+.is-mobile #lcdTopHalf {
+    flex: 1 1 auto;
+    height: auto !important;
+    min-height: 0;
 }
+
+.is-mobile #lcdBottomHalf {
+    flex: 0 0 auto !important;
+    height: auto !important;
+    padding: 6px 0 2px;
+}
+
+/* Wheel wrapper: no fixed margins, sized by the screen */
+.is-mobile .ipod-case > div:last-child {
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+.is-mobile #clickWheel {
+    --wheel-size: min(76vw, 38dvh);
+    width: var(--wheel-size) !important;
+    height: var(--wheel-size) !important;
+    transform: none;
+    margin: 0 auto;
+}
+
+/* Scale wheel controls with the wheel */
+.is-mobile #clickWheel button { font-size: calc(var(--wheel-size) * 0.05); }
+.is-mobile #clickWheel #btnWheelCenter {
+    width: calc(var(--wheel-size) * 0.31) !important;
+    height: calc(var(--wheel-size) * 0.31) !important;
+}
+.is-mobile #clickWheel #btnWheelCenter > div {
+    width: 80%; height: 80%;
+}
+.is-mobile #clickWheel button i { font-size: calc(var(--wheel-size) * 0.075); }
+.is-mobile #clickWheel #btnWheelMenu { font-size: calc(var(--wheel-size) * 0.052); }
 
 /* Seamless styling for the Dashboard when ported into the mobile overlay */
 #mobileDashboardContainer #panelDashboard {
