@@ -1,0 +1,47 @@
+name: Build & Release (Windows)
+
+# Runs on every push to main (and can be started by hand from the Actions tab).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to create releases
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Every run gets its own version, e.g. 1.1.42, so each release has a unique tag
+      - name: Set version
+        shell: bash
+        run: |
+          VERSION="1.1.${{ github.run_number }}"
+          npm pkg set version=$VERSION
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: npm install
+
+      # "dist" first downloads the offline files (predist), then builds the installer + portable exe
+      - name: Build Windows app
+        run: npx electron-builder --win --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"   # no code-signing certificate
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" dist/*.exe \
+            --title "webPod v$VERSION" \
+            --notes "Automated build of commit ${GITHUB_SHA::7}: ${{ github.event.head_commit.message }}" \
+            --target "$GITHUB_SHA"
