@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/png" href="https://codehs.com/uploads/dd0e0dfb0e66f976a74ea5d1dac6e8eb">
+    <title>Caption Studio (webPod)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121214;
+            color: #e1e1e6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 1300px;
+            width: 100%;
+            background: #1a1a1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        h1, h2 {
+            color: #00adb5;
+            text-align: center;
+            margin-top: 0;
+        }
+        .track-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .track-input {
+            background: #252529;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px dashed #444;
+        }
+        .track-input label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #00adb5;
+        }
+        .track-name {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+            word-break: break-all;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #252529;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .control-row {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+        input[type="range"] {
+            flex-grow: 1;
+            accent-color: #00adb5;
+            cursor: pointer;
+        }
+        button {
+            background-color: #00adb5;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #00e0eb;
+        }
+        button.secondary {
+            background-color: #393e46;
+        }
+        button.secondary:hover {
+            background-color: #4e555f;
+        }
+        .time-display {
+            font-family: monospace;
+            font-size: 18px;
+            color: #eeeeee;
+            min-width: 110px;
+            text-align: center;
+        }
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .caption-maker {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .timestamp-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        textarea {
+            width: 100%;
+            background: #252529;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: vertical;
+            font-size: 16px;
+        }
+        #captionText {
+            height: 80px;
+        }
+        .output-section {
+            display: flex;
+            flex-direction: column;
+        }
+        .output-area {
+            height: 280px;
+            font-family: monospace;
+            background: #111;
+            color: #00ff66;
+            border: 1px solid #333;
+            overflow-y: scroll;
+            line-height: 1.4;
+        }
+        .hint {
+            font-size: 13px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        /* FNF Preview Stage Panel */
+        .preview-section {
+            display: flex;
+            flex-direction: column;
+        }
+        .fnf-stage {
+            height: 280px;
+            background-color: #0d0614;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            border: 3px solid #ff007f;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+        .fnf-caption {
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            font-size: 26px;
+            text-transform: uppercase;
+            text-align: center;
+            color: #ffffff;
+            letter-spacing: 2px;
+            text-shadow: 3px 3px 0px #ff007f, 
+                         -1px -1px 0px #000,  
+                          1px -1px 0px #000, 
+                         -1px  1px 0px #000,  
+                          1px  1px 0px #000;
+            word-break: break-word;
+            transition: transform 0.1s ease;
+        }
+        .fnf-caption:empty::before {
+            content: "( Instrumental )";
+            font-family: sans-serif;
+            font-size: 14px;
+            text-transform: none;
+            color: #443c4d;
+            text-shadow: none;
+            letter-spacing: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>SRT/LRC Caption Studio</h1> <br> <h2><a href="./captionsync.html">Sync Already Existing Lyrics</a></h2>
+    
+    <div class="track-section">
+        <div class="track-input">
+            <label for="track1">Audio Track 1 (Inst)</label>
+            <input type="file" id="track1" accept="audio/*">
+            <div id="name1" class="track-name">No file selected</div>
+        </div>
+        <div class="track-input">
+            <label for="track2">Audio Track 2 (Voices 1)</label>
+            <input type="file" id="track2" accept="audio/*">
+            <div id="name2" class="track-name">No file selected</div>
+        </div>
+        <div class="track-input">
+            <label for="track3">Audio Track 3 (Voices 2)</label>
+            <input type="file" id="track3" accept="audio/*">
+            <div id="name3" class="track-name">No file selected</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="slider-row">
+            <span class="time-display" id="timeDisplay">00:00:00,000</span>
+            <input type="range" id="timeSlider" min="0" max="100" value="0" step="0.01">
+            <span class="time-display" id="durationDisplay">00:00:00,000</span>
+        </div>
+        <div class="control-row">
+            <button id="playBtn">Play / Pause</button>
+            <button id="stopBtn" class="secondary">Restart</button>
+            <label for="speedControl"><b>Speed</b></label>
+            <select id="speedControl">
+                <option value="0.25">0.25x</option>
+                <option value="0.5">0.50x</option>
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1.00x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.50x</option>
+                <option value="2">2.00x</option>
+            </select>
+        </div>
+    </div>
+
+    <hr style="border-color: #333; margin: 20px 0;">
+
+    <div class="workspace">
+        <div class="caption-maker">
+            <h2>Caption Editor</h2>
+            
+            <div class="timestamp-buttons">
+                <button id="setStartBtn" class="secondary">Start Time [ [ ]</button>
+                <button id="setEndBtn" class="secondary">End Time [ ] ]</button>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; font-size:14px; font-family:monospace; color:#aaa;">
+                <span id="startShow">Start: --:--:--,---</span>
+                <span id="endShow">End: --:--:--,---</span>
+            </div>
+
+            <label for="captionText" style="font-weight:bold;">Lyrics Line:</label>
+            <textarea id="captionText" placeholder="Type the lyrics line here..."></textarea>
+            
+            <button id="addCaptionBtn">Add Caption Entry</button>
+            <div class="hint">Hotkeys: <b>[</b> sets start, <b>]</b> sets end. Press <b>Enter</b> inside the lyrics box to add it immediately. Use <b>Spacebar</b> (when not typing) to pause/play.</div>
+        </div>
+
+        <div class="output-section">
+            <h2>SRT Caption Output (Editable)</h2>
+            <textarea class="output-area" id="srtOutput" placeholder="Your formatted captions will appear here... Feel free to manually edit or paste raw text!"></textarea>
+            <button id="downloadBtn" class="secondary" style="margin-top: 10px;">Download .srt File</button>
+        </div>
+
+        <div class="preview-section">
+            <h2>FNF Live Preview</h2>
+            <div class="fnf-stage">
+                <div class="fnf-caption" id="fnfPreviewText"></div>
+            </div>
+            <div class="hint" style="text-align: center;">Captions update instantly based on the current playback head time and SRT output text contents above.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    let audioBuffers = [null, null, null];
+    let sourceNodes = [null, null, null];
+    
+    let isPlaying = false;
+    let isUserSeeking = false;
+    let startTime = 0;       // Audio context time when playback last started
+    let pauseTime = 0;       // Current true position in the song (seconds)
+    let duration = 0;
+    let playbackRate = 1;
+    
+    let currentStartTime = null;
+    let currentEndTime = null;
+    let parsedCaptions = [];
+
+    // DOM Elements
+    const playBtn = document.getElementById('playBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const timeSlider = document.getElementById('timeSlider');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const durationDisplay = document.getElementById('durationDisplay');
+    
+    const setStartBtn = document.getElementById('setStartBtn');
+    const setEndBtn = document.getElementById('setEndBtn');
+    const startShow = document.getElementById('startShow');
+    const endShow = document.getElementById('endShow');
+    const captionText = document.getElementById('captionText');
+    const addCaptionBtn = document.getElementById('addCaptionBtn');
+    const srtOutput = document.getElementById('srtOutput');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const speedControl = document.getElementById('speedControl');
+    const fnfPreviewText = document.getElementById('fnfPreviewText');
+
+    // Handle File Loading
+    const fileInputs = [document.getElementById('track1'), document.getElementById('track2'), document.getElementById('track3')];
+    const nameDisplays = [document.getElementById('name1'), document.getElementById('name2'), document.getElementById('name3')];
+
+    fileInputs.forEach((input, index) => {
+        input.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            nameDisplays[index].innerText = "Loading...";
+            
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                audioCtx.decodeAudioData(evt.target.result, function(buffer) {
+                    audioBuffers[index] = buffer;
+                    nameDisplays[index].innerText = file.name;
+                    
+                    if (buffer.duration > duration) {
+                        duration = buffer.duration;
+                        timeSlider.max = duration;
+                        durationDisplay.innerText = formatTimeSRT(duration);
+                    }
+                }, function(err) {
+                    nameDisplays[index].innerText = "Error decoding audio";
+                    console.error(err);
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    });
+
+    // Master Audio Engine Functions
+    function play() {
+        if (isPlaying) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        sourceNodes = audioBuffers.map(buffer => {
+            if (!buffer) return null;
+            let source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.playbackRate.value = playbackRate;
+            source.connect(audioCtx.destination);
+            return source;
+        });
+
+        // Crucial Fix: Capture the exact hardware clock time when starting playback
+        startTime = audioCtx.currentTime;
+
+        sourceNodes.forEach(source => {
+            if (source) {
+                if (pauseTime < source.buffer.duration) {
+                    source.start(0, pauseTime);
+                }
+            }
+        });
+
+        isPlaying = true;
+        updateUIAndPreview();
+    }
+
+    function pause() {
+        if (!isPlaying) return;
+        
+        // Crucial Fix: Calculate how much true song time elapsed scaled by speed
+        pauseTime = pauseTime + (audioCtx.currentTime - startTime) * playbackRate;
+        
+        sourceNodes.forEach(source => {
+            if (source) {
+                try { source.stop(); } catch(e) {}
+            }
+        });
+        
+        isPlaying = false;
+    }
+
+    function stop() {
+        let originallyPlaying = isPlaying;
+        pause();
+        pauseTime = 0;
+        timeSlider.value = 0;
+        timeDisplay.innerText = formatTimeSRT(0);
+        renderCaptionPreview(0);
+        if (originallyPlaying) play();
+    }
+
+    function getCurrentMusicTime() {
+        if (isPlaying) {
+            // Crucial Fix: Track dynamic timeline scaling cleanly while audio is active
+            let elapsedTrackTime = (audioCtx.currentTime - startTime) * playbackRate;
+            let t = pauseTime + elapsedTrackTime;
+            
+            if (t >= duration && duration > 0) {
+                pause();
+                pauseTime = duration;
+                t = duration;
+            }
+            return t;
+        }
+        return pauseTime;
+    }
+
+    // Dynamic Live Parsing Engine for SRT Window
+    function parseSRTData() {
+        const rawText = srtOutput.value.trim();
+        if (!rawText) {
+            parsedCaptions = [];
+            return;
+        }
+
+        const blocks = rawText.split(/\n\s*\n/);
+        parsedCaptions = blocks.map(block => {
+            const lines = block.trim().split('\n');
+            if (lines.length < 3) return null;
+
+            const timeLine = lines[1];
+            const match = timeLine.match(/(\d+):(\d+):(\d+),(\d+)\s*-->\s*(\d+):(\d+):(\d+),(\d+)/);
+            
+            if (!match) return null;
+
+            const startSec = parseInt(match[1]) * 3600 + parseInt(match[2]) * 60 + parseInt(match[3]) + parseInt(match[4]) / 1000;
+            const endSec = parseInt(match[5]) * 3600 + parseInt(match[6]) * 60 + parseInt(match[7]) + parseInt(match[8]) / 1000;
+            
+            const textLines = lines.slice(2).join('\n');
+
+            return { start: startSec, end: endSec, text: textLines };
+        }).filter(item => item !== null);
+    }
+
+    function renderCaptionPreview(currentTime) {
+        const activeCaption = parsedCaptions.find(cap => currentTime >= cap.start && currentTime <= cap.end);
+        
+        if (activeCaption) {
+            if (fnfPreviewText.innerText !== activeCaption.text) {
+                fnfPreviewText.innerText = activeCaption.text;
+                fnfPreviewText.style.transform = "scale(1.08)";
+                setTimeout(() => fnfPreviewText.style.transform = "scale(1)", 60);
+            }
+        } else {
+            fnfPreviewText.innerText = "";
+        }
+    }
+
+    function updateUIAndPreview() {
+        const currentTime = getCurrentMusicTime();
+        timeDisplay.innerText = formatTimeSRT(currentTime);
+        
+        if (!isUserSeeking) {
+            timeSlider.value = currentTime;
+        }
+
+        parseSRTData();
+        renderCaptionPreview(currentTime);
+        
+        if (isPlaying) {
+            requestAnimationFrame(updateUIAndPreview);
+        }
+    }
+
+    // Slider Event Listeners (Seeking updates preview frame too)
+    timeSlider.addEventListener('input', () => {
+        isUserSeeking = true;
+        const seekVal = parseFloat(timeSlider.value);
+        timeDisplay.innerText = formatTimeSRT(seekVal);
+        parseSRTData();
+        renderCaptionPreview(seekVal);
+    });
+
+    timeSlider.addEventListener('change', () => {
+        const wasPlaying = isPlaying;
+        if (wasPlaying) pause();
+        
+        pauseTime = parseFloat(timeSlider.value);
+        isUserSeeking = false;
+        
+        if (wasPlaying) {
+            play();
+        } else {
+            timeDisplay.innerText = formatTimeSRT(pauseTime);
+            parseSRTData();
+            renderCaptionPreview(pauseTime);
+        }
+    });
+
+    // Fire preview generation if user modifies the raw SRT box code manually
+    srtOutput.addEventListener('input', () => {
+        parseSRTData();
+        renderCaptionPreview(getCurrentMusicTime());
+    });
+
+    // Control listeners
+    playBtn.addEventListener('click', () => {
+        if (isPlaying) pause(); else play();
+    });
+    stopBtn.addEventListener('click', stop);
+
+    // Crucial Fix: Seamless speed shifting mid-play without jumping timeline indexes
+    speedControl.addEventListener('change', () => {
+        const wasPlaying = isPlaying;
+        if (wasPlaying) pause();
+        playbackRate = parseFloat(speedControl.value);
+        if (wasPlaying) play();
+    });
+
+    // Time Formatting Utility
+    function formatTimeSRT(seconds) {
+        if (seconds < 0) seconds = 0;
+        let hrs = Math.floor(seconds / 3600);
+        let mins = Math.floor((seconds % 3600) / 60);
+        let secs = Math.floor(seconds % 60);
+        let ms = Math.floor((seconds % 1) * 1000);
+
+        return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')},${String(ms).padStart(2, '0')}`;
+    }
+
+    function getNextIndex() {
+        const text = srtOutput.value.trim();
+        if (!text) return 1;
+        
+        const blocks = text.split(/\n\s*\n/);
+        const lastBlock = blocks[blocks.length - 1].trim();
+        const firstLine = lastBlock.split('\n')[0];
+        
+        const parsedIndex = parseInt(firstLine, 10);
+        return !isNaN(parsedIndex) ? parsedIndex + 1 : blocks.length + 1;
+    }
+
+    // Caption Tool Logic
+    function markStart() {
+        currentStartTime = getCurrentMusicTime();
+        startShow.innerText = "Start: " + formatTimeSRT(currentStartTime);
+    }
+
+    function markEnd() {
+        currentEndTime = getCurrentMusicTime();
+        endShow.innerText = "End: " + formatTimeSRT(currentEndTime);
+    }
+
+    // Fixed Insertion: Ensure newly written notes instantly display if track head points there
+    function addCaption() {
+        const text = captionText.value.trim();
+        if (currentStartTime === null || currentEndTime === null) {
+            alert("Please set both a start and end time first!");
+            return;
+        }
+        if (!text) {
+            alert("Please type out a lyric line.");
+            return;
+        }
+
+        const nextIdx = getNextIndex();
+        const captionBlock = `${nextIdx}\n${formatTimeSRT(currentStartTime)} --> ${formatTimeSRT(currentEndTime)}\n${text}\n\n`;
+        
+        if (srtOutput.value.length > 0 && !srtOutput.value.endsWith('\n\n')) {
+            if (srtOutput.value.endsWith('\n')) srtOutput.value += '\n';
+            else srtOutput.value += '\n\n';
+        }
+        
+        srtOutput.value += captionBlock;
+        srtOutput.scrollTop = srtOutput.scrollHeight;
+        
+        captionText.value = "";
+        currentStartTime = null;
+        currentEndTime = null;
+        startShow.innerText = "Start: --:--:--,---";
+        endShow.innerText = "End: --:--:--,---";
+        captionText.focus();
+
+        parseSRTData();
+        renderCaptionPreview(getCurrentMusicTime());
+    }
+
+    setStartBtn.addEventListener('click', markStart);
+    setEndBtn.addEventListener('click', markEnd);
+    addCaptionBtn.addEventListener('click', addCaption);
+
+    // Keyboard Hotkeys
+    window.addEventListener('keydown', (e) => {
+        if (document.activeElement === captionText) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addCaption();
+            }
+            return;
+        }
+        
+        if (document.activeElement === srtOutput) return;
+
+        if (e.key === '[') {
+            markStart();
+        } else if (e.key === ']') {
+            markEnd();
+        } else if (e.key === ' ') {
+            e.preventDefault();
+            if (isPlaying) pause(); else play();
+        }
+    });
+
+    // Download Handler
+    downloadBtn.addEventListener('click', () => {
+        const text = srtOutput.value;
+        if (!text) {
+            alert("Nothing to download yet!");
+            return;
+        }
+        const blob = new Blob([text], { type: 'text/plain' });
+        const anchor = document.createElement('a');
+        anchor.download = "fnf_lyrics.srt";
+        anchor.href = window.URL.createObjectURL(blob);
+        anchor.click();
+    });
+
+    parseSRTData();
+</script>
+
+</body>
+</html>

@@ -23,7 +23,31 @@ const state = {
         showDsp: true,
         clickSound: true,
         lowLatencyLyrics: true,   // rAF-driven lyric updates for minimal lag
-        disableProfanityFilter: false // requires passcode to enable
+        disableProfanityFilter: false, // requires passcode to enable
+
+        // ---- Visualizer (see other/visualizer.js) ----
+        visColor: 'lcd',          // 'lcd' | 'accent' | 'rainbow' | 'custom'
+        visCustomColor: '#38bdf8',
+        visSensitivity: 1,        // 0.5 - 2
+        visSmoothing: 0.8,        // analyser smoothing 0 - 0.95
+        visHeight: 40,            // canvas height in px
+        visFps: 60,               // frame cap (0 = display rate)
+
+        // ---- Appearance ----
+        customLcdBg: '#1b1f2a',   // "Custom" theme colours
+        customLcdFg: '#7df9ff',
+        customCaseA: '#2b2f3a',
+        customCaseB: '#10131a',
+        wheelStyle: 'white',      // 'white' | 'graphite' | 'black'
+        appBg: 'default',         // 'default' | 'black' | 'gradient' | 'custom'
+        appBgColor: '#0b1020',
+        scanlines: 40,            // 0 - 100 (%)
+        lcdGlow: false,
+        playerScale: 100,         // 70 - 130 (%), desktop layout only
+        lyricSize: 100,           // 80 - 160 (%)
+        lyricActiveColor: '#38bdf8',
+        clickVolume: 100,         // 0 - 100 (%)
+        perfMode: false           // no blur effects, visualizer capped at 30fps
     }
 };
 
@@ -131,33 +155,41 @@ window.addEventListener('DOMContentLoaded', () => {
 // Load badwords.txt file for profanity filtering
 async function loadBadWords() {
     try {
-        const res = await fetch('/other/badwords.txt');
+        // relative path so it also works when the app is not served from the site root
+        const res = await fetch('./other/badwords.txt');
         if (res.ok) {
             const text = await res.text();
             state.badwords = text
                 .split(',')
                 .map(w => w.trim().toLowerCase())
                 .filter(Boolean);
+            buildBadwordRegex();
         }
     } catch (e) {
         console.warn('Could not load badwords.txt:', e);
     }
 }
 
+// One precompiled regex for the whole word list (the old code built a new RegExp
+// for every word on every lyric line). Longest words first; results are cached.
+let badwordRegex = null;
+const profanityCache = new Map();
+function buildBadwordRegex() {
+    profanityCache.clear();
+    const words = Array.from(new Set(state.badwords.filter(Boolean)))
+        .sort((a, b) => b.length - a.length)
+        .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    badwordRegex = words.length ? new RegExp(`\\b(?:${words.join('|')})\\b`, 'gi') : null;
+}
+
 // Censor a given text string using loaded badwords
 function filterProfanity(text) {
-    if (!text || state.badwords.length === 0 || state.settings.disableProfanityFilter) return text;
-    let filtered = text;
-    state.badwords.forEach(badword => {
-        if (!badword) return;
-        // Case-insensitive replacement matching word boundaries
-        const regex = new RegExp(`\\b${badword}\\b`, 'gi');
-        filtered = filtered.replace(regex, (match) => {
-            const firstLetter = match.charAt(0);
-            const stars = '*'.repeat(match.length - 1);
-            return firstLetter + stars;
-        });
-    });
+    if (!text || !badwordRegex || state.settings.disableProfanityFilter) return text;
+    const hit = profanityCache.get(text);
+    if (hit !== undefined) return hit;
+    const filtered = text.replace(badwordRegex, (match) => match.charAt(0) + '*'.repeat(match.length - 1));
+    if (profanityCache.size > 3000) profanityCache.clear();
+    profanityCache.set(text, filtered);
     return filtered;
 }
 
@@ -179,25 +211,59 @@ function initDB() {
 }
 
 // Database helper functions
+// Audio data (fileBuffer) lives only in IndexedDB; the in-memory playlist keeps
+// metadata only, so RAM use no longer grows with the size of the library.
+// The DB record format is unchanged (manager.html reads the same records).
 async function saveTrackToDB(trackObj) {
     if (!db) return;
     return new Promise((resolve, reject) => {
         const tx = db.transaction('tracks', 'readwrite');
         const store = tx.objectStore('tracks');
-        store.put(trackObj);
-        tx.oncomplete = () => resolve();
+        const hasBuffer = !!trackObj.fileBuffer;
+        if (hasBuffer) {
+            store.put(trackObj);
+        } else {
+            // metadata-only save: keep the audio that is already stored
+            const getReq = store.get(trackObj.id);
+            getReq.onsuccess = () => {
+                const existing = getReq.result;
+                store.put(existing && existing.fileBuffer ? { ...trackObj, fileBuffer: existing.fileBuffer } : trackObj);
+            };
+        }
+        tx.oncomplete = () => {
+            if (hasBuffer) trackObj.fileBuffer = null;   // free the copy held in memory
+            resolve();
+        };
         tx.onerror = () => reject(tx.error);
     });
 }
 
+// Reads every track but keeps only its metadata (one record in memory at a time)
 async function loadTracksFromDB() {
     if (!db) return [];
     return new Promise((resolve) => {
+        const out = [];
         const tx = db.transaction('tracks', 'readonly');
-        const store = tx.objectStore('tracks');
-        const request = store.getAll();
-        request.onsuccess = () => resolve(request.result || []);
-        request.onerror = () => resolve([]);
+        const req = tx.objectStore('tracks').openCursor();
+        req.onsuccess = () => {
+            const cursor = req.result;
+            if (!cursor) { resolve(out); return; }
+            const { fileBuffer, ...meta } = cursor.value;
+            if (!meta.size && fileBuffer) meta.size = fileBuffer.byteLength || 0;
+            out.push(meta);
+            cursor.continue();
+        };
+        req.onerror = () => resolve(out);
+    });
+}
+
+// Fetch one track's audio data on demand
+function getTrackBuffer(id) {
+    if (!db) return Promise.resolve(null);
+    return new Promise((resolve) => {
+        const req = db.transaction('tracks', 'readonly').objectStore('tracks').get(id);
+        req.onsuccess = () => resolve(req.result ? req.result.fileBuffer || null : null);
+        req.onerror = () => resolve(null);
     });
 }
 
@@ -220,11 +286,13 @@ function attachAudioElementEvents() {
         state.isPlaying = true;
         updateLcdUI();
         startLowLatencyLyricLoop();
+        visSync();
     });
     audioElement.addEventListener('pause', () => {
         state.isPlaying = false;
         updateLcdUI();
         stopLowLatencyLyricLoop();
+        visSync();
     });
     // Re-apply the chosen playback rate once media is ready (src changes reset it)
     audioElement.addEventListener('loadedmetadata', applyPlaybackRate);
@@ -288,8 +356,10 @@ function initAudioEngine() {
     previousNode.connect(bassFilter);
     bassFilter.connect(analyserNode);
     analyserNode.connect(audioCtx.destination);
+    visConfigureAnalyser();   // apply the chosen visualizer's fft size / smoothing
     // Audio Event Handlers
     attachAudioElementEvents();
+    setupMediaSession();      // hardware media keys on desktop too
 }
 
 // Lock-screen / notification controls so playback keeps going in the background
@@ -304,7 +374,7 @@ function setupMediaSession() {
 }
 
 function updateMediaSessionMetadata(track) {
-    if (!isMobilePlatform || !track || !('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
+    if (!track || !('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
     try {
         navigator.mediaSession.metadata = new MediaMetadata({ title: track.title || 'Unknown', artist: track.artist || '' });
     } catch (e) {}
@@ -322,19 +392,24 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Synthesizer click sound for tactile wheel feedback
+let clickCtx = null; // one shared context for clicks made before the audio engine exists
 function playWheelClickSound() {
     if (!state.settings.clickSound) return;
     // Mobile: a separate AudioContext can interrupt/mute media playback, so skip it
     if (isMobilePlatform) return;
+    const vol = Math.max(0, Math.min(1, (state.settings.clickVolume ?? 100) / 100));
+    if (vol === 0) return;
     try {
-        const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        // (the old code created a brand-new AudioContext on every click before first play)
+        const ctx = audioCtx || clickCtx || (clickCtx = new (window.AudioContext || window.webkitAudioContext)());
+        if (ctx.state === 'suspended') ctx.resume();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(1200, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.03);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
+        gain.gain.setValueAtTime(0.15 * vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, 0.01 * vol), ctx.currentTime + 0.03);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start();
@@ -463,14 +538,18 @@ function onTrackEnded() {
         state.isPlaying = false;
         stopLowLatencyLyricLoop();
         updateLcdUI();
+        visSync();
     }
 }
 
+let playRequestId = 0; // guards against rapid track switches while audio is read from the DB
 async function loadAndPlayTrack(index) {
     if (index < 0 || index >= state.playlist.length) return;
-    
+    const requestId = ++playRequestId;
+
     if (!audioElement) initAudioEngine();
     if (audioCtx && audioCtx.state === 'suspended') await audioCtx.resume();
+    if (requestId !== playRequestId) return;
     state.currentIndex = index;
     const track = state.playlist[index];
 
@@ -491,14 +570,21 @@ async function loadAndPlayTrack(index) {
     if (sliderCaptionSpeed) sliderCaptionSpeed.value = String(state.captionSpeed);
     if (txtCaptionSpeed) txtCaptionSpeed.textContent = `${state.captionSpeed.toFixed(2)}x`;
 
-    // Convert stored ArrayBuffer or blob back into Object URL
+    // Convert stored ArrayBuffer back into an Object URL. The audio data is read from
+    // IndexedDB only now, for this one track (it is not kept in memory for the whole library).
     let srcUrl = track.url;
-    if (track.fileBuffer) {
-        const blob = new Blob([track.fileBuffer], { type: track.mimeType || 'audio/mp3' });
+    let buffer = track.fileBuffer || null;
+    if (!buffer && !track.url) {
+        updateLcdUI();   // show the title immediately while the file is read
+        buffer = await getTrackBuffer(track.id);
+        if (requestId !== playRequestId) return;
+    }
+    if (buffer) {
+        const blob = new Blob([buffer], { type: track.mimeType || 'audio/mp3' });
         srcUrl = URL.createObjectURL(blob);
     }
     const prevObjectUrl = currentObjectUrl;
-    currentObjectUrl = track.fileBuffer ? srcUrl : null;
+    currentObjectUrl = buffer ? srcUrl : null;
     audioElement.src = srcUrl;
     if (prevObjectUrl) setTimeout(() => URL.revokeObjectURL(prevObjectUrl), 2000);
     applyPlaybackRate();
@@ -511,6 +597,7 @@ async function loadAndPlayTrack(index) {
     } catch (err) {
         console.error("Playback start error:", err);
     }
+    visSync();
     updateLcdUI();
     renderPlaylist();
     // Fetch or load captions/lyrics for new track
@@ -804,6 +891,8 @@ function renderLyrics() {
 
     lyricsContainer.className = 'flex-1 p-6 overflow-y-auto space-y-4 text-center text-sm sm:text-base text-slate-400 scroll-smooth flex flex-col items-center';
     lyricsContainer.innerHTML = '';
+    lyricLineEls = null;
+    const lyricFrag = document.createDocumentFragment(); // single DOM insertion instead of one per line
     state.currentLyrics.forEach((lyric, idx) => {
         const lineEl = document.createElement('div');
         lineEl.className = 'lyric-line transition-all duration-200 cursor-pointer py-1.5 px-3 rounded-lg text-slate-400 hover:text-slate-200';
@@ -814,8 +903,10 @@ function renderLyrics() {
                 audioElement.currentTime = Math.max(0, (lyric.time / state.captionSpeed) - state.lyricOffset);
             }
         };
-        lyricsContainer.appendChild(lineEl);
+        lyricFrag.appendChild(lineEl);
     });
+    lyricsContainer.appendChild(lyricFrag);
+    lyricLineEls = Array.from(lyricsContainer.children);
 }
 
 function updatePreviewCaption(activeIdx) {
@@ -854,18 +945,30 @@ function fitMobilePreviewText() {
 window.addEventListener('resize', () => { if (isMobilePlatform) fitMobilePreviewText(); });
 window.addEventListener('orientationchange', () => { if (isMobilePlatform) setTimeout(fitMobilePreviewText, 250); });
 
+// Index of the last lyric whose time is <= t (lyrics are always sorted by time).
+// Checks the current line / next line first, which is the common case while playing,
+// and falls back to a binary search after seeks.
+let lyricLineEls = null; // cached .lyric-line elements for the list view
+function findActiveLyricIndex(t) {
+    const L = state.currentLyrics, n = L.length;
+    const i = state.activeLyricIndex;
+    if (i >= -1 && i < n) {
+        const curOk = i === -1 ? L[0].time > t : L[i].time <= t;
+        if (curOk && (i + 1 >= n || L[i + 1].time > t)) return i;
+    }
+    let lo = 0, hi = n - 1, ans = -1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (L[mid].time <= t) { ans = mid; lo = mid + 1; } else { hi = mid - 1; }
+    }
+    return ans;
+}
+
 // Fast lyric-only update using offset and independent captionSpeed multiplier
 function updateLyricsOnly() {
     if (!audioElement || state.currentLyrics.length === 0) return;
     const effectiveTime = (audioElement.currentTime + state.lyricOffset) * state.captionSpeed;
-    let activeIdx = -1;
-    for (let i = 0; i < state.currentLyrics.length; i++) {
-        if (effectiveTime >= state.currentLyrics[i].time) {
-            activeIdx = i;
-        } else {
-            break;
-        }
-    }
+    const activeIdx = findActiveLyricIndex(effectiveTime);
     if (activeIdx === state.activeLyricIndex) return;
     const prevIdx = state.activeLyricIndex;
     state.activeLyricIndex = activeIdx;
@@ -879,7 +982,11 @@ function updateLyricsOnly() {
 
     const container = document.getElementById('lyricsContainer');
     if (!container) return;
-    const lines = container.querySelectorAll('.lyric-line');
+    // reuse the cached line elements (rebuilt if the DOM was replaced)
+    let lines = lyricLineEls;
+    if (!lines || lines.length !== state.currentLyrics.length || !(lines[0] && lines[0].isConnected)) {
+        lines = lyricLineEls = Array.from(container.querySelectorAll('.lyric-line'));
+    }
     if (prevIdx >= 0 && lines[prevIdx]) {
         lines[prevIdx].classList.remove('active');
     }
@@ -928,52 +1035,7 @@ function onTimeUpdate() {
     }
 }
 
-function renderVisualizer() {
-    const canvas = document.getElementById('lcdVisualizer');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width = canvas.clientWidth || 300;
-    const height = canvas.height = canvas.clientHeight || 40;
-    if (state.settings.visMode === 'none' || !analyserNode || !state.isPlaying) {
-        ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-        ctx.fillRect(0, height / 2, width, 2);
-        requestAnimationFrame(renderVisualizer);
-        return;
-    }
-    const bufferLength = analyserNode.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    if (state.settings.visMode === 'bar') {
-        analyserNode.getByteFrequencyData(dataArray);
-        ctx.clearRect(0, 0, width, height);
-        const barWidth = (width / bufferLength) * 2;
-        let x = 0;
-        for (let i = 0; i < bufferLength; i++) {
-            const barHeight = (dataArray[i] / 255) * height;
-            ctx.fillStyle = 'currentColor';
-            ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
-            x += barWidth;
-        }
-    } else if (state.settings.visMode === 'wave') {
-        analyserNode.getByteTimeDomainData(dataArray);
-        ctx.clearRect(0, 0, width, height);
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = 'currentColor';
-        ctx.beginPath();
-        const sliceWidth = width / bufferLength;
-        let x = 0;
-        for (let i = 0; i < bufferLength; i++) {
-            const v = dataArray[i] / 128.0;
-            const y = (v * height) / 2;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-            x += sliceWidth;
-        }
-        ctx.lineTo(width, height / 2);
-        ctx.stroke();
-    }
-    requestAnimationFrame(renderVisualizer);
-}
+// (visualizer drawing now lives in other/visualizer.js)
 
 function updateLcdUI() {
     const track = state.playlist[state.currentIndex];
@@ -1302,6 +1364,7 @@ function setupEventListeners() {
     });
     document.getElementById('btnCloseSettings')?.addEventListener('click', () => {
         document.getElementById('modalSettings').classList.add('hidden');
+        revertSettingsPreview(); // discard unsaved live-preview changes
     });
     document.getElementById('btnSaveSettings')?.addEventListener('click', savePreferencesUI);
 
@@ -1575,20 +1638,60 @@ function applyEqPreset(preset) {
     if (eqInd) eqInd.style.opacity = preset !== 'flat' ? '1' : '0.4';
 }
 
+// ---- Settings form <-> state.settings mapping ------------------------------
+// [settingKey, elementId, kind]
+const SETTING_FIELDS = [
+    ['lcdTheme', 'selectLcdTheme', 'value'],
+    ['visMode', 'selectVisMode', 'value'],
+    ['visColor', 'selectVisColor', 'value'],
+    ['visCustomColor', 'colorVisCustom', 'value'],
+    ['visSensitivity', 'rangeVisSens', 'num'],
+    ['visSmoothing', 'rangeVisSmooth', 'num'],
+    ['visHeight', 'selectVisHeight', 'num'],
+    ['visFps', 'selectVisFps', 'num'],
+    ['customLcdBg', 'colorLcdBg', 'value'],
+    ['customLcdFg', 'colorLcdFg', 'value'],
+    ['customCaseA', 'colorCaseA', 'value'],
+    ['customCaseB', 'colorCaseB', 'value'],
+    ['wheelStyle', 'selectWheelStyle', 'value'],
+    ['appBg', 'selectAppBg', 'value'],
+    ['appBgColor', 'colorAppBg', 'value'],
+    ['scanlines', 'rangeScanlines', 'num'],
+    ['lcdGlow', 'chkLcdGlow', 'check'],
+    ['playerScale', 'rangePlayerScale', 'num'],
+    ['lyricSize', 'rangeLyricSize', 'num'],
+    ['lyricActiveColor', 'colorLyricActive', 'value'],
+    ['clickVolume', 'rangeClickVol', 'num'],
+    ['perfMode', 'chkPerfMode', 'check'],
+    ['showLyrics', 'chkShowLyrics', 'check'],
+    ['showUpload', 'chkShowUpload', 'check'],
+    ['showDsp', 'chkShowDsp', 'check'],
+    ['clickSound', 'chkClickSound', 'check'],
+    ['lowLatencyLyrics', 'chkLowLatencyLyrics', 'check']
+];
+// Settings that are purely visual and get a live preview while the dialog is open
+const PREVIEW_KEYS = new Set(['lcdTheme', 'visMode', 'visColor', 'visCustomColor', 'visSensitivity', 'visSmoothing',
+    'visHeight', 'visFps', 'customLcdBg', 'customLcdFg', 'customCaseA', 'customCaseB', 'wheelStyle', 'appBg',
+    'appBgColor', 'scanlines', 'lcdGlow', 'playerScale', 'lyricSize', 'lyricActiveColor', 'perfMode']);
+
+// Read the form into a copy of the current settings (does not save anything)
+function readSettingsForm() {
+    const s = { ...state.settings };
+    SETTING_FIELDS.forEach(([key, id, kind]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (kind === 'check') s[key] = el.checked;
+        else if (kind === 'num') { const n = parseFloat(el.value); if (!isNaN(n)) s[key] = n; }
+        else s[key] = el.value;
+    });
+    return s;
+}
+
 function savePreferencesUI() {
-    const lcdTheme = document.getElementById('selectLcdTheme').value;
-    const visMode = document.getElementById('selectVisMode').value;
-    const lyricsApi = document.querySelector('input[name="lyricsApi"]:checked')?.value || 'lrclib';
-    const musixmatchKey = document.getElementById('inputMusixmatchKey').value.trim();
-    state.settings.lcdTheme = lcdTheme;
-    state.settings.visMode = visMode;
-    state.settings.lyricsApi = lyricsApi;
-    state.settings.musixmatchKey = musixmatchKey;
-    state.settings.showLyrics = document.getElementById('chkShowLyrics').checked;
-    state.settings.showUpload = document.getElementById('chkShowUpload').checked;
-    state.settings.showDsp = document.getElementById('chkShowDsp').checked;
-    state.settings.clickSound = document.getElementById('chkClickSound').checked;
-    state.settings.lowLatencyLyrics = document.getElementById('chkLowLatencyLyrics').checked;
+    const s = readSettingsForm();
+    s.lyricsApi = document.querySelector('input[name="lyricsApi"]:checked')?.value || 'lrclib';
+    s.musixmatchKey = document.getElementById('inputMusixmatchKey').value.trim();
+    Object.assign(state.settings, s);
     saveSettingsToStorage();
     applySettingsToApp();
     document.getElementById('modalSettings').classList.add('hidden');
@@ -1598,22 +1701,87 @@ function savePreferencesUI() {
 function populateSettingsForm() {
     const s = state.settings;
     const set = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
-    set('selectLcdTheme', el => el.value = s.lcdTheme);
-    set('selectVisMode', el => el.value = s.visMode);
+    SETTING_FIELDS.forEach(([key, id, kind]) => {
+        set(id, el => { if (kind === 'check') el.checked = !!s[key]; else el.value = s[key]; });
+    });
     set('inputMusixmatchKey', el => el.value = s.musixmatchKey || '');
-    set('chkShowLyrics', el => el.checked = s.showLyrics);
-    set('chkShowUpload', el => el.checked = s.showUpload);
-    set('chkShowDsp', el => el.checked = s.showDsp);
-    set('chkClickSound', el => el.checked = s.clickSound);
-    set('chkLowLatencyLyrics', el => el.checked = s.lowLatencyLyrics);
     set('chkDisableProfanity', el => el.checked = s.disableProfanityFilter);
     const radio = document.querySelector(`input[name="lyricsApi"][value="${s.lyricsApi}"]`);
     if (radio) radio.checked = true;
+    refreshRangeLabels();
+}
+
+// "0.8" style read-outs next to the sliders
+function refreshRangeLabels() {
+    document.querySelectorAll('.range-val').forEach(out => {
+        const input = document.getElementById(out.dataset.for);
+        if (!input) return;
+        const v = parseFloat(input.value);
+        const unit = out.dataset.unit || '';
+        out.textContent = (unit === 'x' ? v.toFixed(2) : unit === '' ? v.toFixed(2) : Math.round(v)) + (unit === 'x' ? 'x' : unit);
+    });
+}
+
+// Live preview while the dialog is open; closing without saving reverts it
+function previewSettingsFromForm() {
+    refreshRangeLabels();
+    applyAppearance(readSettingsForm());
+}
+function revertSettingsPreview() {
+    populateSettingsForm();
+    applyAppearance(state.settings);
+}
+
+// Swap the theme-* class on an element
+function swapThemeClass(el, theme) {
+    if (!el) return;
+    Array.from(el.classList).forEach(c => { if (c.startsWith('theme-')) el.classList.remove(c); });
+    el.classList.add(theme);
+}
+
+// Everything visual (themes, wheel, background, scanlines, lyrics look, visualizer)
+function applyAppearance(s) {
+    const root = document.documentElement;
+    const st = root.style;
+    const theme = s.lcdTheme || 'theme-classic';
+
+    // custom-theme colours + misc CSS variables
+    st.setProperty('--c-lcd-bg', s.customLcdBg);
+    st.setProperty('--c-lcd-fg', s.customLcdFg);
+    st.setProperty('--c-case-a', s.customCaseA);
+    st.setProperty('--c-case-b', s.customCaseB);
+    st.setProperty('--scan-op', String(Math.max(0, Math.min(100, s.scanlines)) / 100));
+    st.setProperty('--lyric-scale', String(Math.max(50, Math.min(200, s.lyricSize)) / 100));
+    st.setProperty('--lyric-active', s.lyricActiveColor);
+    st.setProperty('--app-bg', s.appBgColor);
+    root.dataset.bg = s.appBg;
+    root.classList.toggle('lcd-glow', !!s.lcdGlow);
+    root.classList.toggle('perf-mode', !!s.perfMode);
+
+    // LCD backlight, iPod case and the lyrics Live Preview stage share the theme class
+    swapThemeClass(document.getElementById('lcdDisplay'), theme);
+    swapThemeClass(document.getElementById('ipodCase'), theme);
+    swapThemeClass(document.querySelector('.lcd-preview-stage'), theme);
+
+    // Click wheel finish
+    const wheel = document.getElementById('clickWheel');
+    if (wheel) {
+        wheel.classList.remove('wheel-graphite', 'wheel-black');
+        if (s.wheelStyle === 'graphite' || s.wheelStyle === 'black') wheel.classList.add('wheel-' + s.wheelStyle);
+    }
+
+    // Player size (desktop layout only; mobile fills the screen)
+    if (!isMobilePlatform) {
+        const panel = document.getElementById('panelIpod');
+        if (panel) panel.style.zoom = (s.playerScale && s.playerScale !== 100) ? String(s.playerScale / 100) : '';
+    }
+
+    visInvalidateColor();
+    applyVisualizerSettings(s);
 }
 
 // Apply current state.settings to the live UI
 function applySettingsToApp() {
-    const lcdTheme = state.settings.lcdTheme;
     const lyricsApi = state.settings.lyricsApi;
 
     if (state.settings.lowLatencyLyrics && state.isPlaying) {
@@ -1621,26 +1789,8 @@ function applySettingsToApp() {
     } else {
         stopLowLatencyLyricLoop();
     }
-    
-    // Apply LCD Backlight Theme
-    const lcd = document.getElementById('lcdDisplay');
-    if (lcd) lcd.className = `${lcdTheme} w-full h-[210px] rounded-2xl p-3 border-4 border-slate-800/60 relative overflow-hidden flex flex-col justify-between shadow-inner transition-colors duration-300`;
-    
-    // Apply theme to iPod outer body case
-    const ipodCase = document.getElementById('ipodCase');
-    if (ipodCase) {
-        const oldThemes = Array.from(ipodCase.classList).filter(c => c.startsWith('theme-'));
-        oldThemes.forEach(c => ipodCase.classList.remove(c));
-        ipodCase.classList.add(lcdTheme);
-    }
 
-    // Keep Live Preview stage in sync with LCD theme
-    const previewStage = document.querySelector('.lcd-preview-stage');
-    if (previewStage) {
-        const oldThemes = Array.from(previewStage.classList).filter(c => c.startsWith('theme-'));
-        oldThemes.forEach(c => previewStage.classList.remove(c));
-        previewStage.classList.add(lcdTheme);
-    }
+    applyAppearance(state.settings);
     
     // Toggle Panel Visibilities (only applies if not in mobile view or if mobile rules allow it)
     if (!isMobilePlatform) {
@@ -1652,6 +1802,39 @@ function applySettingsToApp() {
     updateLcdUI();
     const tag = document.getElementById('lyricSourceTag');
     if (tag && !(lyricsApi === 'lrclib' && tag.querySelector('a'))) tag.textContent = lyricsApi.toUpperCase();
+}
+
+// Wire up live preview, slider read-outs and "reset appearance"
+function setupAppearanceControls() {
+    const modal = document.getElementById('modalSettings');
+    if (!modal) return;
+    const idToKey = {};
+    SETTING_FIELDS.forEach(([key, id]) => { idToKey[id] = key; });
+    const onChange = (e) => {
+        const key = idToKey[e.target.id];
+        if (key && PREVIEW_KEYS.has(key)) previewSettingsFromForm();
+        else refreshRangeLabels();
+    };
+    modal.addEventListener('input', onChange);
+    modal.addEventListener('change', onChange);
+
+    document.getElementById('btnResetAppearance')?.addEventListener('click', () => {
+        // reset only the visual options to their defaults (the dialog still needs "Save")
+        const defaults = {
+            lcdTheme: 'theme-classic', visMode: 'bar', visColor: 'lcd', visCustomColor: '#38bdf8', visSensitivity: 1,
+            visSmoothing: 0.8, visHeight: 40, visFps: 60, customLcdBg: '#1b1f2a', customLcdFg: '#7df9ff',
+            customCaseA: '#2b2f3a', customCaseB: '#10131a', wheelStyle: 'white', appBg: 'default',
+            appBgColor: '#0b1020', scanlines: 40, lcdGlow: false, playerScale: 100, lyricSize: 100,
+            lyricActiveColor: '#38bdf8', clickVolume: 100, perfMode: false
+        };
+        SETTING_FIELDS.forEach(([key, id, kind]) => {
+            if (!(key in defaults)) return;
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (kind === 'check') el.checked = defaults[key]; else el.value = defaults[key];
+        });
+        previewSettingsFromForm();
+    });
 }
 
 // Profanity filter toggle: turning the filter OFF requires a passcode
@@ -1705,6 +1888,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
     setupKeyboardControls();
     setupProfanityToggle();
+    setupAppearanceControls();
     populateSettingsForm();
     applySettingsToApp();
     try {
@@ -1723,5 +1907,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
         console.warn('Storage init warning:', e);
     }
-    renderVisualizer();
+    visInit();
+    visSync();
 });
