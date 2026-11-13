@@ -861,14 +861,14 @@ function parseLyricsFile(yamlText) {
         if ((match = rawLine.match(/^\s{4}end_ms:\s*(.+?)\s*$/))) {
             currentLine.end_ms = Number(parseYamlScalar(match[1])); continue;
         }
-        if (/^\s{6}words:\s*$/.test(rawLine)) { inWords = true; continue; }
-        if (inWords && (match = rawLine.match(/^\s{8}-\s+text:\s*(.*)$/))) {
+        if (/^\s{4}words:\s*$/.test(rawLine)) { inWords = true; continue; }
+        if (inWords && (match = rawLine.match(/^\s{6}-\s+text:\s*(.*)$/))) {
             finishWord(); currentWord = { text: parseYamlScalar(match[1]) }; continue;
         }
-        if (inWords && currentWord && (match = rawLine.match(/^\s{10}start_ms:\s*(.+?)\s*$/))) {
+        if (inWords && currentWord && (match = rawLine.match(/^\s{8}start_ms:\s*(.+?)\s*$/))) {
             currentWord.start_ms = Number(parseYamlScalar(match[1])); continue;
         }
-        if (inWords && currentWord && (match = rawLine.match(/^\s{10}end_ms:\s*(.+?)\s*$/))) {
+        if (inWords && currentWord && (match = rawLine.match(/^\s{8}end_ms:\s*(.+?)\s*$/))) {
             currentWord.end_ms = Number(parseYamlScalar(match[1]));
         }
     }
