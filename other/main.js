@@ -681,6 +681,25 @@ async function fetchLrclibLyrics(title, artist) {
         if (Array.isArray(data) && data.length > 0) {
             // Find best matching record with synced lyrics
             const match = data.find(item => item.syncedLyrics) || data[0];
+            if (match && match.lyricsfile) {
+                const lyricsFileLines = parseLyricsFile(match.lyricsfile);
+                if (lyricsFileLines.length) {
+                    state.currentLyrics = lyricsFileLines;
+                    renderLyrics();
+                    setLyricStatus(match.hasWordSync ? 'LRCLIB Word Sync' : 'LRCLIB Lyricsfile', 'emerald');
+                    if (state.currentIndex >= 0 && state.currentIndex < state.playlist.length) {
+                        const track = state.playlist[state.currentIndex];
+                        track.customLyrics = state.currentLyrics;
+                        track.lyricsSource = 'lrclib';
+                        track.lrclibId = match.id != null ? match.id : null;
+                        track.lyricOffset = state.lyricOffset;
+                        track.captionSpeed = state.captionSpeed;
+                        await saveTrackToDB(track);
+                    }
+                    updateLcdUI();
+                    return;
+                }
+            }
             if (match && match.syncedLyrics) {
                 state.currentLyrics = parseLrcLyrics(match.syncedLyrics);
                 renderLyrics();
@@ -785,6 +804,91 @@ function setLyricNotFound() {
     updateLcdUI();
 }
 
+// Parse LRCLIB Lyricsfile YAML (v1.0), including line and word timestamps.
+function parseYamlScalar(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    if (raw.startsWith('"')) {
+        try { return JSON.parse(raw); } catch (e) { return raw.slice(1, raw.endsWith('"') ? -1 : undefined); }
+    }
+    if (raw.startsWith("'")) return raw.slice(1, raw.endsWith("'") ? -1 : undefined).replace(/''/g, "'");
+    return raw.replace(/\s+#.*$/, '').trim();
+}
+
+function parseLyricsFile(yamlText) {
+    const source = String(yamlText || '').replace(/\r/g, '').split('\n');
+    const result = [];
+    let currentLine = null, currentWord = null, inLines = false, inWords = false;
+
+    const finishWord = () => {
+        if (!currentLine || !currentWord || !currentWord.text) { currentWord = null; return; }
+        const start = Number(currentWord.start_ms);
+        if (Number.isFinite(start)) currentLine.words.push({
+            text: currentWord.text, time: start / 1000,
+            endTime: Number.isFinite(Number(currentWord.end_ms)) ? Number(currentWord.end_ms) / 1000 : null
+        });
+        currentWord = null;
+    };
+    const finishLine = () => {
+        finishWord();
+        if (!currentLine) return;
+        const start = Number(currentLine.start_ms), end = Number(currentLine.end_ms);
+        const words = currentLine.words || [];
+        const text = currentLine.text || words.map(w => w.text).join('');
+        if (text && Number.isFinite(start)) result.push({
+            time: start / 1000, endTime: Number.isFinite(end) ? end / 1000 : null,
+            text, words: words.length ? words : null
+        });
+        currentLine = null;
+    };
+
+    for (const rawLine of source) {
+        if (/^lines:\s*$/.test(rawLine)) { inLines = true; continue; }
+        if (!inLines) continue;
+        if (/^\S/.test(rawLine) && rawLine.trim() && !rawLine.startsWith('lines:')) break;
+
+        let match;
+        if ((match = rawLine.match(/^  -\s+text:\s*(.*)$/))) {
+            finishLine();
+            currentLine = { text: parseYamlScalar(match[1]), words: [] };
+            inWords = false;
+            continue;
+        }
+        if (!currentLine) continue;
+        if ((match = rawLine.match(/^\s{4}start_ms:\s*(.+?)\s*$/))) {
+            currentLine.start_ms = Number(parseYamlScalar(match[1])); continue;
+        }
+        if ((match = rawLine.match(/^\s{4}end_ms:\s*(.+?)\s*$/))) {
+            currentLine.end_ms = Number(parseYamlScalar(match[1])); continue;
+        }
+        if (/^\s{6}words:\s*$/.test(rawLine)) { inWords = true; continue; }
+        if (inWords && (match = rawLine.match(/^\s{8}-\s+text:\s*(.*)$/))) {
+            finishWord(); currentWord = { text: parseYamlScalar(match[1]) }; continue;
+        }
+        if (inWords && currentWord && (match = rawLine.match(/^\s{10}start_ms:\s*(.+?)\s*$/))) {
+            currentWord.start_ms = Number(parseYamlScalar(match[1])); continue;
+        }
+        if (inWords && currentWord && (match = rawLine.match(/^\s{10}end_ms:\s*(.+?)\s*$/))) {
+            currentWord.end_ms = Number(parseYamlScalar(match[1]));
+        }
+    }
+    finishLine();
+
+    if (!result.length) {
+        const plainIndex = source.findIndex(line => /^plain:\s*\|\s*$/.test(line));
+        if (plainIndex >= 0) {
+            const plainLines = [];
+            for (let i = plainIndex + 1; i < source.length; i++) {
+                if (/^\S/.test(source[i]) && source[i].trim()) break;
+                const value = source[i].replace(/^\s{2}/, '');
+                if (value.trim()) plainLines.push(value);
+            }
+            return plainLines.map(text => ({ time: 0, text: text.trim(), words: null }));
+        }
+    }
+    return result.sort((a, b) => a.time - b.time);
+}
+
 // Parse LRC and SRT timecode formats
 function parseLrcLyrics(lrcText) {
     const lines = lrcText.split(/\r?\n/);
@@ -846,6 +950,10 @@ function detectAndParseLyrics(text, preferredFormat) {
     if (!trimmed) return [];
     if (preferredFormat === 'lrc') return parseLrcLyrics(trimmed);
     if (preferredFormat === 'srt') return parseSrtCaptions(trimmed);
+    if (preferredFormat === 'yml' || preferredFormat === 'yaml') return parseLyricsFile(trimmed);
+    if (/^version:\s*['"]?1\.0/m.test(trimmed) && /^lines:\s*$/m.test(trimmed)) {
+        return parseLyricsFile(trimmed);
+    }
     if (/\[\d{1,2}:\d{2}/.test(trimmed)) {
         return parseLrcLyrics(trimmed);
     }
@@ -911,7 +1019,16 @@ function renderLyrics() {
         const lineEl = document.createElement('div');
         lineEl.className = 'lyric-line transition-all duration-200 cursor-pointer py-1.5 px-3 rounded-lg text-slate-400 hover:text-slate-200';
         lineEl.dataset.index = idx;
-        lineEl.textContent = filterProfanity(lyric.text);
+        if (Array.isArray(lyric.words) && lyric.words.length) {
+            lyric.words.forEach(word => {
+                const span = document.createElement('span');
+                span.className = 'lyric-word';
+                span.textContent = filterProfanity(word.text);
+                lineEl.appendChild(span);
+            });
+        } else {
+            lineEl.textContent = filterProfanity(lyric.text);
+        }
         lineEl.onclick = () => {
             if (audioElement && lyric.time > 0) {
                 audioElement.currentTime = Math.max(0, (lyric.time / state.captionSpeed) - state.lyricOffset);
@@ -923,21 +1040,35 @@ function renderLyrics() {
     lyricLineEls = Array.from(lyricsContainer.children);
 }
 
-function updatePreviewCaption(activeIdx) {
+function getVisibleWordText(lyric, effectiveTime) {
+    if (!lyric || !Array.isArray(lyric.words) || !lyric.words.length) return lyric ? lyric.text : '';
+    return lyric.words.filter(word => effectiveTime >= word.time).map(word => word.text).join('');
+}
+
+function updatePreviewCaption(activeIdx, effectiveTime = 0) {
     const el = document.getElementById('fnfPreviewText');
     const mobEl = document.getElementById('mobileFnfPreviewText');
-    const text = (activeIdx >= 0 && state.currentLyrics[activeIdx])
-        ? state.currentLyrics[activeIdx].text
-        : '';
-    const filteredText = filterProfanity(text);
-    
-    if (el && el.textContent !== filteredText) {
-        el.textContent = filteredText;
-    }
+    const lyric = activeIdx >= 0 ? state.currentLyrics[activeIdx] : null;
+    const filteredText = filterProfanity(lyric ? getVisibleWordText(lyric, effectiveTime) : '');
+    if (el && el.textContent !== filteredText) el.textContent = filteredText;
     if (mobEl && mobEl.textContent !== filteredText) {
         mobEl.textContent = filteredText;
         fitMobilePreviewText();
     }
+}
+
+function updateActiveWord(activeIdx, effectiveTime) {
+    if (activeIdx < 0) return;
+    const lyric = state.currentLyrics[activeIdx];
+    if (!lyric || !Array.isArray(lyric.words) || !lyric.words.length) return;
+    const container = document.getElementById('lyricsContainer');
+    const line = container && container.querySelector(`.lyric-line[data-index="${activeIdx}"]`);
+    if (!line) return;
+    const wordIndex = lyric.words.reduce((found, word, index) => effectiveTime >= word.time ? index : found, -1);
+    line.querySelectorAll('.lyric-word').forEach((span, index) => {
+        span.classList.toggle('word-active', index === wordIndex);
+        span.classList.toggle('word-past', index < wordIndex);
+    });
 }
 
 // Size the mobile LCD caption so the lyrics strip is only as tall as its text needs,
@@ -983,12 +1114,18 @@ function updateLyricsOnly() {
     if (!audioElement || state.currentLyrics.length === 0) return;
     const effectiveTime = (audioElement.currentTime + state.lyricOffset) * state.captionSpeed;
     const activeIdx = findActiveLyricIndex(effectiveTime);
-    if (activeIdx === state.activeLyricIndex) return;
+    if (activeIdx === state.activeLyricIndex) {
+        if (state.lyricsViewMode === 'preview' || isMobilePlatform) updatePreviewCaption(activeIdx, effectiveTime);
+        else updateActiveWord(activeIdx, effectiveTime);
+        return;
+    }
     const prevIdx = state.activeLyricIndex;
     state.activeLyricIndex = activeIdx;
 
     if (state.lyricsViewMode === 'preview' || isMobilePlatform) {
-        updatePreviewCaption(activeIdx);
+        updatePreviewCaption(activeIdx, effectiveTime);
+    } else {
+        updateActiveWord(activeIdx, effectiveTime);
     }
     if (state.lyricsViewMode === 'preview' && !isMobilePlatform) return;
     // Mobile: the list panel is hidden; skip list scrolling/zooming entirely
@@ -1551,6 +1688,8 @@ async function handleSrtFileUpload(e) {
         const lower = file.name.toLowerCase();
         if (lower.endsWith('.lrc')) {
             parsedLyrics = parseLrcLyrics(text);
+        } else if (lower.endsWith('.yml') || lower.endsWith('.yaml')) {
+            parsedLyrics = parseLyricsFile(text);
         } else if (lower.endsWith('.srt')) {
             parsedLyrics = parseSrtCaptions(text);
         } else {
