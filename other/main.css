@@ -222,6 +222,41 @@ html.is-mobile { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .is-mobile #clickWheel button i { font-size: calc(var(--wheel-size) * 0.075); }
 .is-mobile #clickWheel #btnWheelMenu { font-size: calc(var(--wheel-size) * 0.052); }
 
+/* ==============================================================
+   Word-by-word lyrics (Apple Music style) — list view
+   Each word span gets --p (0..1) from JS; the gradient fills left to right.
+============================================================== */
+.lyric-line.has-words {
+    font-weight: 700;
+    font-size: 1.2em;
+    line-height: 1.35;
+    opacity: 0.45;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.lyric-line.has-words.active {
+    opacity: 1;
+    transform: scale(1.02);
+    color: rgba(148, 163, 184, 0.5);
+}
+.lyric-wg { white-space: nowrap; }
+.lyric-line.has-words .lyric-word {
+    display: inline-block;
+    white-space: pre;
+}
+.lyric-line.has-words.active .lyric-word {
+    --c-on: var(--lyric-active, #38bdf8);
+    --c-off: rgba(148, 163, 184, 0.45);
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    background-image: linear-gradient(90deg,
+        var(--c-on) calc(var(--p, 0) * 120% - 20%),
+        var(--c-off) calc(var(--p, 0) * 120%));
+    -webkit-background-clip: text;
+    background-clip: text;
+    transform: translateY(calc(var(--p, 0) * -0.07em));
+    will-change: transform;
+}
+
 /* Seamless styling for the Dashboard when ported into the mobile overlay */
 #mobileDashboardContainer #panelDashboard {
     border: none;

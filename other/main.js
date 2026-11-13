@@ -680,7 +680,25 @@ async function fetchLrclibLyrics(title, artist) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
             // Find best matching record with synced lyrics
-            const match = data.find(item => item.syncedLyrics) || data[0];
+            const match = data.find(item => item.syncedLyrics || item.lyricsfile) || data[0];
+            // Prefer a word-synced Lyricsfile (karaoke-style) when LRCLIB has one for this track
+            const wordHit = pickWordSyncedLyricsfile(data, match);
+            if (wordHit) {
+                state.currentLyrics = wordHit.lyrics;
+                renderLyrics();
+                setLyricStatus(wordHit.id != null ? `LRCLIB #${wordHit.id} (word)` : 'Word Synced', 'emerald');
+                if (state.currentIndex >= 0 && state.currentIndex < state.playlist.length) {
+                    const track = state.playlist[state.currentIndex];
+                    track.customLyrics = state.currentLyrics;
+                    track.lyricsSource = 'lrclib';
+                    track.lrclibId = wordHit.id != null ? wordHit.id : null;
+                    track.lyricOffset = state.lyricOffset;
+                    track.captionSpeed = state.captionSpeed;
+                    await saveTrackToDB(track);
+                }
+                updateLcdUI();
+                return;
+            }
             if (match && match.syncedLyrics) {
                 state.currentLyrics = parseLrcLyrics(match.syncedLyrics);
                 renderLyrics();
@@ -776,7 +794,7 @@ function setLyricNotFound() {
                 <i class="fa-solid fa-face-frown text-2xl text-slate-600"></i>
                 <p class="text-xs">No online lyrics found.</p>
                 <div class="flex gap-2 justify-center mt-2">
-                    <button onclick="triggerCaptionUpload()" class="text-[11px] text-cyan-400 hover:underline">Upload .SRT / .LRC</button>
+                    <button onclick="triggerCaptionUpload()" class="text-[11px] text-cyan-400 hover:underline">Upload .SRT / .LRC / .YML</button>
                     <button onclick="openLyricPasteModal()" class="text-[11px] text-cyan-400 hover:underline">Paste lyrics</button>
                 </div>
             </div>
@@ -813,6 +831,78 @@ function parseLrcLyrics(lrcText) {
     return result.sort((a, b) => a.time - b.time);
 }
 
+// Parse an LRCLIB Lyricsfile (YAML). Each line may include per-word timing:
+//   lines: [{ text, start_ms, end_ms, words: [{ text, start_ms, end_ms }] }]
+// Output entries: { time, end, text, words?: [{ time, end, text }] } (seconds)
+function parseLyricsfile(yamlText) {
+    if (typeof jsyaml === 'undefined') throw new Error('YAML parser (js-yaml) is not loaded');
+    const doc = jsyaml.load(yamlText);
+    if (!doc || typeof doc !== 'object') return [];
+    const ms = (v) => { const n = Number(v); return (v !== null && v !== undefined && Number.isFinite(n)) ? n / 1000 : null; };
+    const out = [];
+    const lines = Array.isArray(doc.lines) ? doc.lines : [];
+    lines.forEach(line => {
+        if (!line || typeof line !== 'object') return;
+        let words = [];
+        if (Array.isArray(line.words)) {
+            line.words.forEach(w => {
+                if (!w || typeof w.text !== 'string') return;
+                const s = ms(w.start_ms);
+                if (s === null) return;
+                words.push({ time: s, end: ms(w.end_ms), text: w.text });
+            });
+            words.sort((a, b) => a.time - b.time);
+        }
+        let start = ms(line.start_ms);
+        if (start === null && words.length) start = words[0].time;
+        if (start === null) return;
+        let text = typeof line.text === 'string' ? line.text : words.map(w => w.text).join('');
+        text = text.trim();
+        if (!text) return;
+        const lineEnd = ms(line.end_ms);
+        if (words.length) {
+            // some files omit spaces between words; restore them so wrapping/preview read correctly
+            if (words.length > 1 && !words.some(w => /\s/.test(w.text)) && /\s/.test(text)) {
+                words.forEach((w, i) => { if (i < words.length - 1) w.text += ' '; });
+            }
+            words.forEach((w, i) => {
+                if (w.end === null || w.end <= w.time) {
+                    const next = words[i + 1];
+                    w.end = next ? next.time : (lineEnd !== null && lineEnd > w.time ? lineEnd : w.time + 0.4);
+                }
+            });
+        }
+        const entry = { time: start, end: lineEnd !== null ? lineEnd : (words.length ? words[words.length - 1].end : null), text };
+        if (words.length) entry.words = words;
+        out.push(entry);
+    });
+    if (out.length === 0 && typeof doc.plain === 'string') {
+        // no timing at all: fall back to the plain lyrics block
+        return doc.plain.split(/\r?\n/).filter(l => l.trim()).map(l => ({ time: 0, text: l.trim() }));
+    }
+    return out.sort((a, b) => a.time - b.time);
+}
+
+function looksLikeLyricsfile(text) {
+    return /^\s*(?:---\s*\n\s*)?(?:version|metadata|lines)\s*:/m.test(text) && /^\s*lines\s*:/m.test(text);
+}
+
+// From an LRCLIB search result list, find a word-synced Lyricsfile for the matched track
+function pickWordSyncedLyricsfile(data, match) {
+    const norm = s => String(s || '').trim().toLowerCase();
+    const same = it => it === match || (match && norm(it.trackName) === norm(match.trackName) && norm(it.artistName) === norm(match.artistName));
+    for (const item of data) {
+        if (!item || typeof item.lyricsfile !== 'string' || !item.lyricsfile.trim() || !same(item)) continue;
+        try {
+            const lyrics = parseLyricsfile(item.lyricsfile);
+            if (lyrics.some(l => l.words && l.words.length)) return { lyrics, id: item.id };
+        } catch (e) {
+            console.warn('Lyricsfile parse error:', e);
+        }
+    }
+    return null;
+}
+
 function parseSrtCaptions(srtText) {
     const normalized = srtText.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const blocks = normalized.split(/\n\s*\n/);
@@ -844,6 +934,14 @@ function parseSrtCaptions(srtText) {
 function detectAndParseLyrics(text, preferredFormat) {
     const trimmed = (text || '').trim();
     if (!trimmed) return [];
+    if (preferredFormat === 'yml' || (preferredFormat !== 'lrc' && preferredFormat !== 'srt' && looksLikeLyricsfile(trimmed))) {
+        try {
+            return parseLyricsfile(trimmed);
+        } catch (e) {
+            console.warn('Lyricsfile parse error:', e);
+            return [];
+        }
+    }
     if (preferredFormat === 'lrc') return parseLrcLyrics(trimmed);
     if (preferredFormat === 'srt') return parseSrtCaptions(trimmed);
     if (/\[\d{1,2}:\d{2}/.test(trimmed)) {
@@ -887,6 +985,9 @@ function renderLyrics() {
     }
     state.activeLyricIndex = -1;
 
+    previewCaptionKey = null;   // force the caption text to be rebuilt
+    if (state.isPlaying) startLowLatencyLyricLoop();   // word-synced lyrics need per-frame updates
+
     if (state.lyricsViewMode === 'preview') {
         const lcd = document.getElementById('lcdDisplay');
         const themeClass = lcd
@@ -911,7 +1012,11 @@ function renderLyrics() {
         const lineEl = document.createElement('div');
         lineEl.className = 'lyric-line transition-all duration-200 cursor-pointer py-1.5 px-3 rounded-lg text-slate-400 hover:text-slate-200';
         lineEl.dataset.index = idx;
-        lineEl.textContent = filterProfanity(lyric.text);
+        if (lyric.words && lyric.words.length) {
+            buildWordSpans(lineEl, lyric);
+        } else {
+            lineEl.textContent = filterProfanity(lyric.text);
+        }
         lineEl.onclick = () => {
             if (audioElement && lyric.time > 0) {
                 audioElement.currentTime = Math.max(0, (lyric.time / state.captionSpeed) - state.lyricOffset);
@@ -923,13 +1028,23 @@ function renderLyrics() {
     lyricLineEls = Array.from(lyricsContainer.children);
 }
 
-function updatePreviewCaption(activeIdx) {
+function updatePreviewCaption(activeIdx, t) {
     const el = document.getElementById('fnfPreviewText');
     const mobEl = document.getElementById('mobileFnfPreviewText');
-    const text = (activeIdx >= 0 && state.currentLyrics[activeIdx])
-        ? state.currentLyrics[activeIdx].text
-        : '';
-    const filteredText = filterProfanity(text);
+    const line = (activeIdx >= 0) ? state.currentLyrics[activeIdx] : null;
+    // Word-synced lines build up one word at a time ("i'm" -> "i'm bout" -> ...)
+    let key = String(activeIdx), n = 0;
+    if (line && line.words && line.words.length && typeof t === 'number') {
+        n = Math.max(1, wordsStarted(line.words, t));
+        key += ':' + n;
+    }
+    if (key !== previewCaptionKey) {
+        previewCaptionKey = key;
+        let text = line ? line.text : '';
+        if (n > 0) text = line.words.slice(0, n).map(w => w.text).join('').trim();
+        previewCaptionText = filterProfanity(text);
+    }
+    const filteredText = previewCaptionText;
     
     if (el && el.textContent !== filteredText) {
         el.textContent = filteredText;
@@ -983,13 +1098,16 @@ function updateLyricsOnly() {
     if (!audioElement || state.currentLyrics.length === 0) return;
     const effectiveTime = (audioElement.currentTime + state.lyricOffset) * state.captionSpeed;
     const activeIdx = findActiveLyricIndex(effectiveTime);
-    if (activeIdx === state.activeLyricIndex) return;
+    const changed = activeIdx !== state.activeLyricIndex;
     const prevIdx = state.activeLyricIndex;
     state.activeLyricIndex = activeIdx;
 
     if (state.lyricsViewMode === 'preview' || isMobilePlatform) {
-        updatePreviewCaption(activeIdx);
+        updatePreviewCaption(activeIdx, effectiveTime);
     }
+    // Nothing else to do unless the line changed or the line has per-word timing
+    const activeLyric = activeIdx >= 0 ? state.currentLyrics[activeIdx] : null;
+    if (!changed && !(activeLyric && activeLyric.words)) return;
     if (state.lyricsViewMode === 'preview' && !isMobilePlatform) return;
     // Mobile: the list panel is hidden; skip list scrolling/zooming entirely
     if (isMobilePlatform) return;
@@ -1001,20 +1119,105 @@ function updateLyricsOnly() {
     if (!lines || lines.length !== state.currentLyrics.length || !(lines[0] && lines[0].isConnected)) {
         lines = lyricLineEls = Array.from(container.querySelectorAll('.lyric-line'));
     }
-    if (prevIdx >= 0 && lines[prevIdx]) {
-        lines[prevIdx].classList.remove('active');
+    if (changed) {
+        if (prevIdx >= 0 && lines[prevIdx]) {
+            lines[prevIdx].classList.remove('active');
+        }
+        if (activeIdx >= 0 && lines[activeIdx]) {
+            lines[activeIdx].classList.add('active');
+            const behavior = state.settings.lowLatencyLyrics ? 'auto' : 'smooth';
+            lines[activeIdx].scrollIntoView({ behavior, block: 'center' });
+        }
     }
-    if (activeIdx >= 0 && lines[activeIdx]) {
-        lines[activeIdx].classList.add('active');
-        const behavior = state.settings.lowLatencyLyrics ? 'auto' : 'smooth';
-        lines[activeIdx].scrollIntoView({ behavior, block: 'center' });
+    if (activeLyric && activeLyric.words && lines[activeIdx]) {
+        updateWordProgress(lines[activeIdx], activeLyric, effectiveTime);
+    }
+}
+
+// ---------------------------------------------------------------
+// Word-by-word lyrics (LRCLIB Lyricsfile) helpers
+// A lyric entry may carry words: [{ time, end, text }] (seconds, same clock as `time`)
+// ---------------------------------------------------------------
+let _wordCacheRef = null, _wordCacheVal = false;
+function currentHasWords() {
+    const L = state.currentLyrics;
+    if (L !== _wordCacheRef) {
+        _wordCacheRef = L;
+        _wordCacheVal = L.some(l => l.words && l.words.length);
+    }
+    return _wordCacheVal;
+}
+// Word fills need per-frame updates, so word-synced lyrics always use the rAF loop
+function lyricRafWanted() {
+    return state.settings.lowLatencyLyrics || currentHasWords();
+}
+let previewCaptionKey = null, previewCaptionText = '';
+
+// number of words whose start time has been reached
+function wordsStarted(words, t) {
+    let n = 0;
+    for (let i = 0; i < words.length; i++) {
+        if (words[i].time <= t) n = i + 1; else break;
+    }
+    return n;
+}
+
+// Build the per-word spans for a list-view line (Apple Music style karaoke fill)
+function buildWordSpans(lineEl, lyric) {
+    lineEl.classList.add('has-words');
+    lineEl.textContent = '';
+    const frag = document.createDocumentFragment();
+    const els = [];
+    let group = null;
+    lyric.words.forEach((w, i) => {
+        const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(w.text);
+        if (!m[2]) {
+            if (m[0]) { group = null; frag.appendChild(document.createTextNode(' ')); }
+            els[i] = null;
+            return;
+        }
+        if (m[1]) { group = null; frag.appendChild(document.createTextNode(' ')); }
+        if (!group) {
+            group = document.createElement('span');
+            group.className = 'lyric-wg';   // keeps syllables of one word together when wrapping
+            frag.appendChild(group);
+        }
+        const sp = document.createElement('span');
+        sp.className = 'lyric-word';
+        sp.textContent = filterProfanity(m[2]);
+        group.appendChild(sp);
+        els[i] = sp;
+        if (m[3]) { group = null; frag.appendChild(document.createTextNode(' ')); }
+    });
+    lineEl.appendChild(frag);
+    lineEl._wordEls = els;
+}
+
+// Set --p (0..1 fill) on each word of the active line
+function updateWordProgress(lineEl, lyric, t) {
+    const els = lineEl && lineEl._wordEls;
+    if (!els) return;
+    const words = lyric.words;
+    for (let i = 0; i < words.length; i++) {
+        const sp = els[i];
+        if (!sp) continue;
+        const w = words[i];
+        let p;
+        if (t <= w.time) p = 0;
+        else if (t >= w.end) p = 1;
+        else p = (t - w.time) / Math.max(0.001, w.end - w.time);
+        const q = Math.round(p * 200) / 200;
+        if (sp._p !== q) {
+            sp._p = q;
+            sp.style.setProperty('--p', String(q));
+        }
     }
 }
 
 function startLowLatencyLyricLoop() {
-    if (lyricRafId !== null || !state.settings.lowLatencyLyrics) return;
+    if (lyricRafId !== null || !lyricRafWanted()) return;
     const tick = () => {
-        if (!state.settings.lowLatencyLyrics || !state.isPlaying || !audioElement) {
+        if (!lyricRafWanted() || !state.isPlaying || !audioElement) {
             lyricRafId = null;
             return;
         }
@@ -1044,7 +1247,7 @@ function onTimeUpdate() {
     }
     if (txtCurrentTime) txtCurrentTime.textContent = formatTime(currentTime);
     if (txtDuration) txtDuration.textContent = formatTime(duration);
-    if (!state.settings.lowLatencyLyrics) {
+    if (!lyricRafWanted() || !state.isPlaying) {
         updateLyricsOnly();
     }
 }
@@ -1549,7 +1752,9 @@ async function handleSrtFileUpload(e) {
         const text = await file.text();
         let parsedLyrics = [];
         const lower = file.name.toLowerCase();
-        if (lower.endsWith('.lrc')) {
+        if (lower.endsWith('.yml') || lower.endsWith('.yaml')) {
+            parsedLyrics = detectAndParseLyrics(text, 'yml');
+        } else if (lower.endsWith('.lrc')) {
             parsedLyrics = parseLrcLyrics(text);
         } else if (lower.endsWith('.srt')) {
             parsedLyrics = parseSrtCaptions(text);
@@ -1583,7 +1788,7 @@ async function handleSrtFileUpload(e) {
             }
             alert(`Lyrics attached successfully (${parsedLyrics.length} lines)!`);
         } else {
-            alert('Could not parse timestamps from file. Ensure valid .SRT or .LRC format.');
+            alert('Could not parse timestamps from file. Ensure valid .SRT, .LRC or .YML (Lyricsfile) format.');
         }
     } catch (err) {
         console.error(err);
@@ -1815,7 +2020,7 @@ function applyAppearance(s) {
 function applySettingsToApp() {
     const lyricsApi = state.settings.lyricsApi;
 
-    if (state.settings.lowLatencyLyrics && state.isPlaying) {
+    if (lyricRafWanted() && state.isPlaying) {
         startLowLatencyLyricLoop();
     } else {
         stopLowLatencyLyricLoop();
