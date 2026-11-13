@@ -21,8 +21,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
     <!-- JSZip for Save Manager -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- js-yaml for LRCLIB Lyricsfile (.yml) lyrics -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
     <!-- Stylesheet -->
     <link rel="stylesheet" href="./other/main.css">
     <link rel="stylesheet" href="./other/themes.css">
@@ -112,7 +110,7 @@
                 <!-- Quick Actions Row -->
                 <div class="flex items-center gap-2">
                     <!-- Upload Caption File Button -->
-                    <button type="button" id="btnUploadCaption" title="Upload SRT, LRC or YML (Lyricsfile) for current track" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1.5 shadow-md">
+                    <button type="button" id="btnUploadCaption" title="Upload SRT or LRC file for current track" class="flex-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-center gap-1.5 shadow-md">
                         <i class="fa-solid fa-file-arrow-up pointer-events-none"></i>
                         <span>Upload</span>
                     </button>
@@ -617,12 +615,12 @@
                     <option value="auto">Auto-detect</option>
                     <option value="lrc">LRC (synced lyrics)</option>
                     <option value="srt">SRT (subtitles)</option>
-                    <option value="yml">YAML (LRCLIB Lyricsfile, word-by-word)</option>
+                    <option value="yml">Lyricsfile YAML (.yml / .yaml)</option>
                 </select>
             </div>
             <!-- Textarea -->
             <textarea id="textareaLyricInput" rows="14"
-                placeholder="Paste your LRC, SRT or YAML (Lyricsfile) content here...&#10;&#10;LRC example:&#10;[00:12.345]Hello world&#10;[00:15.678]Second line&#10;&#10;SRT example:&#10;1&#10;00:00:12,345 --> 00:00:15,000&#10;Hello world&#10;&#10;2&#10;00:00:15,678 --> 00:00:18,000&#10;Second line"
+                placeholder="Paste your LRC, SRT, or Lyricsfile YAML here...&#10;&#10;LRC example:&#10;[00:12.345]Hello world&#10;[00:15.678]Second line&#10;&#10;SRT example:&#10;1&#10;00:00:12,345 --> 00:00:15,000&#10;Hello world&#10;&#10;2&#10;00:00:15,678 --> 00:00:18,000&#10;Second line"
                 class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs text-slate-200 font-mono resize-y focus:outline-none focus:border-cyan-500 placeholder-slate-600"></textarea>
             <!-- Apply Button -->
             <button id="btnApplyLyricText" class="w-full bg-cyan-600 hover:bg-cyan-500 active:scale-[0.98] text-white text-xs font-bold py-2.5 rounded-lg transition shadow-md">
@@ -631,7 +629,7 @@
         </div>
     </div>
     <!-- Hidden File Attachment Input for Local SRT/LRC files -->
-    <input type="file" id="fileSrtInput" accept=".srt,.lrc,.yml,.yaml,text/plain" class="hidden">
+    <input type="file" id="fileSrtInput" accept=".srt,.lrc,.yml,.yaml,.lyricsfile.yaml,text/plain" class="hidden">
 
     <!-- Application Script -->
     <script src="./other/main.js"></script>
