@@ -680,7 +680,7 @@ async function fetchLrclibLyrics(title, artist) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
             // Find best matching record with synced lyrics
-            const match = data.find(item => item.syncedLyrics) || data[0];
+            const match = data.find(item => item.hasWordSync && item.lyricsfile) || data.find(item => item.lyricsfile) || data.find(item => item.syncedLyrics) || data[0];
             if (match && match.lyricsfile) {
                 const lyricsFileLines = parseLyricsFile(match.lyricsfile);
                 if (lyricsFileLines.length) {
