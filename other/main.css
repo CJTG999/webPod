@@ -265,3 +265,23 @@ html.is-mobile { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     padding: 0;
     min-height: auto;
 }
+
+/* Word-by-word lyrics: Apple Music-inspired active-word emphasis. */
+.lyric-line:has(.lyric-word) { line-height: 1.8; }
+.lyric-word {
+    color: inherit;
+    opacity: 0.58;
+    transition: color 120ms ease, opacity 120ms ease, text-shadow 120ms ease;
+}
+.lyric-word.word-past { opacity: 0.82; }
+.lyric-word.word-active {
+    color: #fff;
+    opacity: 1;
+    text-shadow: 0 0 12px color-mix(in srgb, var(--lyric-active, #38bdf8) 42%, transparent);
+}
+.lyric-line.active:has(.lyric-word) { color: #cbd5e1; }
+.lyric-line.active .lyric-word.word-active {
+    color: var(--lyric-active, #38bdf8);
+    opacity: 1;
+}
+.lcd-preview-caption { white-space: pre-wrap; }
