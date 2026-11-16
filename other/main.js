@@ -1032,20 +1032,28 @@ function updatePreviewCaption(activeIdx, t) {
     const el = document.getElementById('fnfPreviewText');
     const mobEl = document.getElementById('mobileFnfPreviewText');
     const line = (activeIdx >= 0) ? state.currentLyrics[activeIdx] : null;
-    // Word-synced lines build up one word at a time ("i'm" -> "i'm bout" -> ...)
-    let key = String(activeIdx), n = 0;
+
+    // Word-synced lines reveal letter by letter using the same timing ratio as normal mode
+    let key = String(activeIdx), charCount = -1;
     if (line && line.words && line.words.length && typeof t === 'number') {
-        n = Math.max(1, wordsStarted(line.words, t));
-        key += ':' + n;
+        charCount = previewCharsVisible(line.words, t);
+        key += ':' + charCount;
     }
+
     if (key !== previewCaptionKey) {
         previewCaptionKey = key;
-        let text = line ? line.text : '';
-        if (n > 0) text = line.words.slice(0, n).map(w => w.text).join('').trim();
-        previewCaptionText = filterProfanity(text);
+        if (!line) {
+            previewCaptionText = '';
+        } else if (charCount >= 0) {
+            // Filter the full word sequence first so censored words stay masked mid-reveal
+            const fullFiltered = filterProfanity(line.words.map(w => w.text).join(''));
+            previewCaptionText = fullFiltered.slice(0, charCount).trimEnd();
+        } else {
+            previewCaptionText = filterProfanity(line.text);
+        }
     }
     const filteredText = previewCaptionText;
-    
+
     if (el && el.textContent !== filteredText) {
         el.textContent = filteredText;
     }
@@ -1154,12 +1162,25 @@ function lyricRafWanted() {
 let previewCaptionKey = null, previewCaptionText = '';
 
 // number of words whose start time has been reached
-function wordsStarted(words, t) {
-    let n = 0;
+// Total characters to show across the line based on each word's start/end timing
+function previewCharsVisible(words, t) {
+    let chars = 0;
     for (let i = 0; i < words.length; i++) {
-        if (words[i].time <= t) n = i + 1; else break;
+        const w = words[i];
+        const len = w.text.length;
+        if (t <= w.time) {
+            // Keep at least the first character visible once the line is active
+            if (i === 0 && len > 0) chars += 1;
+            break;
+        } else if (t >= w.end) {
+            chars += len;
+        } else {
+            const p = (t - w.time) / Math.max(0.001, w.end - w.time);
+            chars += Math.max(1, Math.ceil(p * len));
+            break;
+        }
     }
-    return n;
+    return chars;
 }
 
 // Build the per-word spans for a list-view line (Apple Music style karaoke fill)
