@@ -103,6 +103,7 @@ let volumeGain = null;     // Master gain (supports amplification above 100%)
 let analyserNode = null;   // Visualizer analyser
 let isBassBoosted = false;
 let currentObjectUrl = null; // active blob URL for the loaded track
+let documentPipWindow = null;
 // IndexedDB Storage Database Handle
 let db = null;
 const DB_NAME = 'webPodMemoryDB';
@@ -390,8 +391,82 @@ function setupMediaSession() {
 function updateMediaSessionMetadata(track) {
     if (!track || !('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
     try {
-        navigator.mediaSession.metadata = new MediaMetadata({ title: track.title || 'Unknown', artist: track.artist || '' });
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: track.title || 'Unknown', artist: track.artist || '',
+            artwork: track.artwork ? [{ src: track.artwork }] : []
+        });
     } catch (e) {}
+}
+
+// Document Picture-in-Picture miniplayer. It shares the main audio element and
+// lyric state, so controls and synchronized captions stay in step with webPod.
+function openDocumentMiniplayer() {
+    if (!('documentPictureInPicture' in window)) {
+        alert('Document Picture-in-Picture is not available in this browser. Try a recent Chromium browser or the webPod desktop app.');
+        return;
+    }
+    if (documentPipWindow && !documentPipWindow.closed) { documentPipWindow.focus(); return; }
+
+    window.documentPictureInPicture.requestWindow({ width: 420, height: 560 })
+        .then(pip => {
+            documentPipWindow = pip;
+            pip.document.title = 'webPod Miniplayer';
+            pip.document.body.innerHTML = `
+                <main class="mini">
+                    <div class="top"><span class="brand">webPod</span><button id="miniClose" class="icon" title="Close miniplayer" aria-label="Close miniplayer">×</button></div>
+                    <img id="miniArt" class="art" alt="Album artwork">
+                    <div class="meta"><div id="miniTitle" class="title">No Song Loaded</div><div id="miniArtist" class="artist">Select or upload music</div></div>
+                    <section class="lyrics" aria-live="polite"><div id="miniPrevious" class="lyric dim"></div><div id="miniCurrent" class="lyric current">Lyrics will appear here</div><div id="miniNext" class="lyric dim"></div></section>
+                    <div class="timeline"><span id="miniElapsed">00:00</span><input id="miniSeek" type="range" min="0" max="1000" value="0" aria-label="Seek"><span id="miniRemaining">−00:00</span></div>
+                    <div class="controls"><button id="miniPrev" class="control" title="Previous track" aria-label="Previous track">⏮</button><button id="miniToggle" class="control primary" title="Play" aria-label="Play">▶</button><button id="miniNextTrack" class="control" title="Next track" aria-label="Next track">⏭</button></div>
+                    <div class="foot">Synced lyrics · webPod</div>
+                </main>`;
+            const style = pip.document.createElement('style');
+            style.textContent = `
+                *{box-sizing:border-box} body{margin:0;min-width:260px;min-height:100vh;background:radial-gradient(ellipse at top,#24304a,#10131c 62%);color:#f8fafc;font:14px Inter,system-ui,sans-serif}
+                .mini{min-height:100vh;padding:16px 20px 14px;display:flex;flex-direction:column;align-items:center}.top{width:100%;display:flex;justify-content:space-between;align-items:center;color:#67e8f9}.brand{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}.icon{border:0;background:transparent;color:#94a3b8;font-size:24px;cursor:pointer}.art{width:min(54vw,230px);height:min(54vw,230px);min-width:130px;min-height:130px;object-fit:cover;border-radius:18px;background:#1e293b;box-shadow:0 16px 44px #0008;margin:12px 0 14px}.meta{width:100%;text-align:center}.title{font-size:20px;line-height:1.2;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.artist{margin-top:5px;color:#94a3b8;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lyrics{flex:1;min-height:115px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:12px 3px}.lyric{max-width:100%;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}.dim{color:#64748b;font-size:13px}.current{color:#f8fafc;font-size:17px;font-weight:600}.timeline{width:100%;display:flex;align-items:center;gap:9px;color:#94a3b8;font-size:11px;font-variant-numeric:tabular-nums}.timeline input{min-width:0;flex:1;accent-color:#22d3ee;height:4px}.controls{display:flex;align-items:center;justify-content:center;gap:30px;margin:15px 0 11px}.control{border:0;background:transparent;color:#e2e8f0;font-size:24px;cursor:pointer}.primary{width:48px;height:48px;border-radius:50%;background:#e2e8f0;color:#0f172a;font-size:19px}.foot{color:#475569;font-size:10px;letter-spacing:.08em;text-transform:uppercase}`;
+            pip.document.head.appendChild(style);
+            pip.document.getElementById('miniToggle').addEventListener('click', togglePlayPause);
+            pip.document.getElementById('miniPrev').addEventListener('click', playPrevTrack);
+            pip.document.getElementById('miniNextTrack').addEventListener('click', playNextTrack);
+            pip.document.getElementById('miniClose').addEventListener('click', () => pip.close());
+            pip.document.getElementById('miniSeek').addEventListener('input', e => {
+                if (audioElement && Number.isFinite(audioElement.duration)) audioElement.currentTime = (Number(e.target.value) / 1000) * audioElement.duration;
+            });
+            pip.addEventListener('pagehide', () => { if (documentPipWindow === pip) documentPipWindow = null; });
+            syncDocumentMiniplayer();
+        })
+        .catch(err => console.warn('Could not open Document PiP miniplayer:', err));
+}
+
+function syncDocumentMiniplayer() {
+    const pip = documentPipWindow;
+    if (!pip || pip.closed) return;
+    const doc = pip.document;
+    const track = state.playlist[state.currentIndex];
+    const setText = (id, value) => { const el = doc.getElementById(id); if (el && el.textContent !== value) el.textContent = value; };
+    setText('miniTitle', track ? track.title : 'No Song Loaded');
+    setText('miniArtist', track ? (track.artist || 'Unknown Artist') : 'Select or upload music');
+    const art = doc.getElementById('miniArt');
+    if (art && art.dataset.src !== (track && track.artwork || '')) {
+        art.dataset.src = track && track.artwork || '';
+        art.src = art.dataset.src || './assets/favicon.png';
+    }
+    const toggle = doc.getElementById('miniToggle');
+    if (toggle) { toggle.textContent = state.isPlaying ? 'Ⅱ' : '▶'; toggle.title = state.isPlaying ? 'Pause' : 'Play'; toggle.setAttribute('aria-label', toggle.title); }
+    const currentTime = audioElement ? audioElement.currentTime : 0;
+    const duration = audioElement && Number.isFinite(audioElement.duration) ? audioElement.duration : 0;
+    setText('miniElapsed', formatTime(currentTime));
+    setText('miniRemaining', `−${formatTime(Math.max(0, duration - currentTime))}`);
+    const seek = doc.getElementById('miniSeek');
+    if (seek && !seek.matches(':active')) seek.value = String(duration > 0 ? Math.round(currentTime / duration * 1000) : 0);
+    const lyricTime = (currentTime + state.lyricOffset) * state.captionSpeed;
+    const active = state.currentLyrics.length ? findActiveLyricIndex(lyricTime) : -1;
+    const lineText = index => index >= 0 && state.currentLyrics[index]
+        ? filterProfanity(state.currentLyrics[index].words?.map(word => word.text).join('') || state.currentLyrics[index].text || '') : '';
+    setText('miniPrevious', lineText(active - 1));
+    setText('miniCurrent', lineText(active) || (state.currentLyrics.length ? '♪' : 'Lyrics unavailable'));
+    setText('miniNext', lineText(active + 1));
 }
 
 // Keep UI in sync with the real audio state when returning from the background
@@ -1103,6 +1178,7 @@ function findActiveLyricIndex(t) {
 
 // Fast lyric-only update using offset and independent captionSpeed multiplier
 function updateLyricsOnly() {
+    syncDocumentMiniplayer();
     if (!audioElement || state.currentLyrics.length === 0) return;
     const effectiveTime = (audioElement.currentTime + state.lyricOffset) * state.captionSpeed;
     const activeIdx = findActiveLyricIndex(effectiveTime);
@@ -1271,6 +1347,7 @@ function onTimeUpdate() {
     if (!lyricRafWanted() || !state.isPlaying) {
         updateLyricsOnly();
     }
+    syncDocumentMiniplayer();
 }
 
 // (visualizer drawing now lives in other/visualizer.js)
@@ -1313,6 +1390,7 @@ function updateLcdUI() {
             }
         }
     }
+    syncDocumentMiniplayer();
 }
 
 function renderPlaylist() {
@@ -1394,6 +1472,7 @@ async function importZipToMain(file) {
                 id: meta.id,
                 title: meta.title || 'Unknown',
                 artist: meta.artist || 'Unknown Artist',
+                artwork: meta.artwork || '',
                 fileName: meta.fileName || 'audio.mp3',
                 mimeType: meta.mimeType || 'audio/mpeg',
                 size: meta.size || fileBuffer.byteLength,
@@ -1617,6 +1696,7 @@ function setupEventListeners() {
     document.getElementById('btnOpenSettings')?.addEventListener('click', () => {
         document.getElementById('modalSettings').classList.remove('hidden');
     });
+    document.getElementById('btnMiniplayer')?.addEventListener('click', openDocumentMiniplayer);
     document.getElementById('btnCloseSettings')?.addEventListener('click', () => {
         document.getElementById('modalSettings').classList.add('hidden');
         revertSettingsPreview(); // discard unsaved live-preview changes
@@ -1679,7 +1759,16 @@ function extractAudioMetadata(file) {
                     if (tags.artist && tags.artist.trim()) {
                         artist = tags.artist.trim();
                     }
-                    resolve({ title, artist });
+                    let artwork = '';
+                    if (tags.picture && tags.picture.data && tags.picture.data.length) {
+                        try {
+                            const bytes = tags.picture.data;
+                            let binary = '';
+                            for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.slice(i, i + 0x8000));
+                            artwork = `data:${tags.picture.format || 'image/jpeg'};base64,${btoa(binary)}`;
+                        } catch (e) { console.warn('Could not read embedded album artwork:', e); }
+                    }
+                    resolve({ title, artist, artwork });
                 },
                 onError: function() {
                     resolve({ title, artist });
@@ -1703,6 +1792,7 @@ async function handleAudioFileUpload(e) {
                 id: 'track_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
                 title: meta.title,
                 artist: meta.artist,
+                artwork: meta.artwork || '',
                 fileName: file.name,
                 mimeType: file.type || 'audio/mpeg',
                 size: file.size,
