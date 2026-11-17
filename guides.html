@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#070b16">
+  <meta name="description" content="Learn how to use webPod with practical tutorials, examples, and workflows for music, synced lyrics, audio controls, captions, and backups.">
+  <title>webPod Guides — Tutorials & Examples</title>
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root{color-scheme:dark;--bg:#070b16;--panel:#101827;--panel2:#0c1321;--line:#243247;--text:#edf4ff;--muted:#9aabc1;--dim:#71839d;--cyan:#35d5e8;--blue:#5688ff;--green:#5ee0a0;--pink:#f18ac8;--radius:18px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:90px}body{margin:0;background:radial-gradient(ellipse at 12% 0%,#123044 0,transparent 32%),radial-gradient(ellipse at 95% 28%,#17234a 0,transparent 28%),var(--bg);color:var(--text);font:15px/1.7 Inter,system-ui,sans-serif}a{color:var(--cyan);text-decoration:none}a:hover{color:#a5f4ff}button{font:inherit;color:inherit}
+    .topbar{height:68px;position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:0 max(22px,calc((100vw - 1240px)/2));background:#080e1beF;border-bottom:1px solid #25344a;backdrop-filter:blur(18px)}
+    .brand{display:flex;align-items:center;gap:11px;color:var(--text);font-weight:800;letter-spacing:.02em}.brand i{font-size:22px;color:var(--cyan)}.brand span{font-size:19px}.brand small{font-size:10px;color:var(--cyan);border:1px solid #1e6172;border-radius:20px;padding:2px 7px}
+    .toplinks{display:flex;align-items:center;gap:20px;font-size:13px;color:var(--muted)}.toplinks a{color:inherit}.toplinks a:hover{color:var(--cyan)}.launch{background:linear-gradient(100deg,#0891b2,#2563eb);color:white!important;padding:9px 15px;border-radius:10px;font-weight:700}
+    .hero{max-width:1120px;margin:auto;padding:76px 26px 50px}.eyebrow{color:var(--cyan);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}.hero h1{font-size:clamp(38px,6vw,66px);line-height:1.04;letter-spacing:-.055em;margin:14px 0}.gradient{background:linear-gradient(95deg,#4de2ed,#6b91ff 65%,#c28cff);background-clip:text;color:transparent}.hero p{max-width:680px;color:var(--muted);font-size:17px}.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:25px}.btn{display:inline-flex;align-items:center;gap:9px;padding:11px 16px;border-radius:11px;border:1px solid var(--line);font-weight:700;font-size:13px;color:var(--text);background:#101a2b}.btn.primary{background:linear-gradient(100deg,#0891b2,#2563eb);border-color:transparent}
+    .layout{max-width:1240px;margin:0 auto;padding:0 24px 90px;display:grid;grid-template-columns:245px minmax(0,1fr);gap:34px;align-items:start}.sidebar{position:sticky;top:91px;max-height:calc(100vh - 112px);overflow:auto;padding:18px 14px;background:#0c1422bd;border:1px solid var(--line);border-radius:16px}.side-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:800;margin:15px 9px 7px}.side-label:first-child{margin-top:0}.sidebar a{display:block;padding:7px 9px;border-radius:8px;color:var(--muted);font-size:12px}.sidebar a:hover,.sidebar a.active{background:#163143;color:#8deefa}.content{min-width:0}.intro{padding:22px 24px;margin-bottom:24px;border:1px solid #25556a;background:linear-gradient(120deg,#0e2634,#111a30);border-radius:var(--radius)}.intro strong{color:#9aeefa}.intro p{margin:5px 0;color:var(--muted)}
+    .doc-section{padding:27px 0 30px;border-bottom:1px solid #1d2a3d;scroll-margin-top:90px}.section-kicker{font-size:10px;color:var(--cyan);font-weight:800;text-transform:uppercase;letter-spacing:.15em}.doc-section h2{font-size:27px;letter-spacing:-.035em;margin:5px 0 8px}.doc-section>p{color:var(--muted);max-width:800px}.doc-section h3{font-size:16px;margin:22px 0 7px}.doc-section ul,.doc-section ol{padding-left:22px;color:var(--muted)}.doc-section li{padding:3px 0}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:18px 0}.mini-card{padding:17px;border:1px solid var(--line);background:#101a2a;border-radius:14px}.mini-card i{color:var(--cyan);font-size:18px}.mini-card h3{margin:7px 0 3px}.mini-card p{font-size:13px;color:var(--muted);margin:0}.callout{border-left:3px solid var(--cyan);background:#102331;padding:12px 15px;border-radius:0 10px 10px 0;color:#b7d0df;margin:17px 0;font-size:13px}.callout.warn{border-color:#e8b65e;background:#292215;color:#e9d4a6}pre{overflow:auto;background:#070d18;border:1px solid #25354b;border-radius:12px;padding:16px;color:#bdebf0;font:12px/1.7 "JetBrains Mono",monospace;margin:12px 0}code{font-family:"JetBrains Mono",monospace;font-size:.9em;color:#9cecf3;background:#0b1d2b;padding:2px 5px;border-radius:5px}.steps{counter-reset:step;list-style:none;padding:0!important}.steps li{counter-increment:step;position:relative;padding:3px 0 14px 43px!important}.steps li:before{content:counter(step);position:absolute;left:0;top:2px;width:28px;height:28px;border-radius:9px;background:#123746;color:#8deefa;display:grid;place-items:center;font-weight:800;font-size:12px}
+    .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:14px 0}table{width:100%;border-collapse:collapse;font-size:12px;min-width:420px}th,td{text-align:left;padding:10px 13px;border-bottom:1px solid #233047}th{background:#111e30;color:#b9d5e5}td{color:var(--muted)}tr:last-child td{border-bottom:0}.tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;background:#143442;color:#8cebf2;margin-right:5px}
+    .faq details{border:1px solid var(--line);border-radius:11px;margin:9px 0;background:#0d1726}.faq summary{padding:13px 15px;cursor:pointer;font-weight:700;font-size:13px}.faq details p{padding:0 15px 14px;margin:0;color:var(--muted);font-size:13px}.footer{max-width:1120px;margin:auto;padding:25px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:15px;color:var(--dim);font-size:12px}
+    .mobile-menu{display:none}.search{width:100%;padding:10px 12px;background:#080f1c;border:1px solid var(--line);border-radius:9px;color:var(--text);outline:none;font:12px Inter;margin:0 0 12px}.search:focus{border-color:var(--cyan)}
+    @media(max-width:850px){.layout{grid-template-columns:1fr}.sidebar{position:relative;top:auto;max-height:none;display:none}.sidebar.open{display:block}.mobile-menu{display:inline-flex}.toplinks>a:not(.launch){display:none}.hero{padding-top:55px}.cards{grid-template-columns:1fr}}
+    @media(max-width:520px){.topbar{height:58px;padding:0 15px}.hero{padding:48px 18px 32px}.hero p{font-size:15px}.layout{padding:0 17px 60px}.doc-section h2{font-size:23px}.footer{padding:20px;display:block}.footer span{display:block;margin-top:6px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+  </style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./index.html"><i class="fa-solid fa-podcast"></i><span>webPod</span><small>GUIDES</small></a>
+  <nav class="toplinks"><a href="./index.html">Home</a><a href="#getting-started">Tutorials</a><a href="#examples">Examples</a><a class="launch" href="./webpod.html">Open player <i class="fa-solid fa-arrow-up-right-from-square"></i></a></nav>
+</header>
+<section class="hero">
+  <div class="eyebrow">The webPod handbook</div>
+  <h1>Make more of your<br><span class="gradient">music library.</span></h1>
+  <p>Everything you need to get started with webPod: practical walkthroughs, file examples, creative workflows, and answers to common questions.</p>
+  <div class="hero-actions"><a class="btn primary" href="#getting-started"><i class="fa-solid fa-book-open"></i> Start learning</a><a class="btn" href="./webpod.html"><i class="fa-solid fa-play"></i> Launch webPod</a></div>
+</section>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <input class="search" id="guideSearch" type="search" placeholder="Find a guide…" aria-label="Find a guide">
+    <div class="side-label">Start here</div>
+    <a href="#getting-started">Getting started</a><a href="#add-music">Add your music</a><a href="#library">Your library & storage</a>
+    <div class="side-label">Lyrics & captions</div>
+    <a href="#lyrics">Add synced lyrics</a><a href="#formats">SRT & LRC examples</a><a href="#caption-studio">Caption Studio</a><a href="#syncmaster">SyncMaster</a>
+    <div class="side-label">Audio & playback</div>
+    <a href="#playback">Playback controls</a><a href="#equalizer">Equalizer & speed</a><a href="#visualizer">Visualizer</a>
+    <div class="side-label">Manage & troubleshoot</div>
+    <a href="#backups">Backup & restore</a><a href="#mobile">Use on mobile</a><a href="#troubleshooting">Troubleshooting</a><a href="#faq">FAQ</a>
+    <div class="side-label">Ideas</div><a href="#examples">Use cases & workflows</a>
+  </aside>
+  <main class="content">
+    <div class="intro"><strong>Quick note: webPod is local-first.</strong><p>Your music library is stored in this browser's IndexedDB. Your audio files are not uploaded to a webPod server. Keep a ZIP backup if you plan to clear browser data or move to another device.</p></div>
+
+    <section class="doc-section" id="getting-started">
+      <div class="section-kicker">01 / Start here</div><h2>Getting started</h2>
+      <p>webPod is a browser-based music player with a retro click-wheel interface, synced lyrics, audio controls, and companion tools. You do not need an account.</p>
+      <ol class="steps">
+        <li>Open the <a href="./webpod.html">webPod player</a> in the browser you want to use as your music library.</li>
+        <li>Choose the option to add or upload music and select audio files from your device.</li>
+        <li>Select a track in your library and press play. Your imported tracks are saved in browser storage.</li>
+        <li>Optionally add lyrics, adjust the sound, and create a ZIP backup from the Backup Manager.</li>
+      </ol>
+      <div class="callout">For the player and companion tools to share the same library, open them from the same site origin and browser profile. A different browser or a different hostname has separate storage.</div>
+    </section>
+
+    <section class="doc-section" id="add-music">
+      <div class="section-kicker">02 / Your music</div><h2>Add music to webPod</h2>
+      <p>Import audio files you already have access to. webPod reads supported audio in your browser and stores the library locally.</p>
+      <h3>Basic workflow</h3><ol class="steps">
+        <li>Open the player and find its music import / add-track control.</li><li>Select one or more audio files from your device.</li><li>Let the import finish, then choose a track from your library.</li><li>If the title or artist is missing, edit the track details if the player offers that option, or use a clearly named file as a fallback.</li>
+      </ol>
+      <p>Common formats include MP3, WAV, OGG, FLAC, M4A, AAC, and other browser-supported audio formats. Actual playback support can vary by browser and codec.</p>
+      <div class="callout warn">Only import music you have the right to use. webPod is a player and library tool, not a music download service.</div>
+    </section>
+
+    <section class="doc-section" id="library">
+      <div class="section-kicker">03 / Where things live</div><h2>Your library & browser storage</h2>
+      <p>The player and Backup Manager use the browser database <code>webPodMemoryDB</code> (IndexedDB), including the <code>tracks</code> store. This is why the tools can work with the same songs without uploading them to a web server.</p>
+      <div class="cards">
+        <article class="mini-card"><i class="fa-solid fa-hard-drive"></i><h3>Stored on this browser</h3><p>Tracks and their saved metadata remain available in the same browser profile.</p></article>
+        <article class="mini-card"><i class="fa-solid fa-shield-halved"></i><h3>Not cloud sync</h3><p>Browser storage does not automatically follow you to another device, browser, or profile.</p></article>
+      </div>
+      <p>Private browsing sessions, clearing site data, browser storage limits, or browser resets can remove local data. Export a backup before making major browser changes.</p>
+    </section>
+
+    <section class="doc-section" id="lyrics">
+      <div class="section-kicker">04 / Lyrics</div><h2>Add synced lyrics</h2>
+      <p>Lyrics can be fetched from LRCLIB when a match is available, or supplied from your own SRT/LRC file. The player uses timestamps to show the right line as the song plays.</p>
+      <ol class="steps"><li>Choose a track in webPod.</li><li>Use the lyrics area to search for lyrics or load your own file.</li><li>Check that the title, artist, and timing match the audio.</li><li>Play the track and watch the active line update.</li></ol>
+      <h3>Fix lyrics that are early or late</h3><p>Use the per-track lyric offset to move the displayed lyrics earlier or later. If the timing gradually drifts across the song, adjust the caption rate rather than relying only on a fixed offset. The offset and rate controls are saved per track.</p>
+      <div class="callout">A positive or negative offset shifts the timing as a whole. Rate adjustment changes how quickly the timestamps progress. Make small changes, replay a few checkpoints, and compare the beginning and end.</div>
+    </section>
+
+    <section class="doc-section" id="formats">
+      <div class="section-kicker">05 / File examples</div><h2>SRT & LRC file examples</h2>
+      <p>Both formats describe text paired with timestamps. Save the content as a plain-text file with the matching extension.</p>
+      <h3>Example .LRC</h3><pre>[ar:Demo Artist]
+[ti:Example Song]
+[00:12.00]First lyric line
+[00:16.50]Second lyric line
+[00:20.00]Third lyric line</pre>
+      <h3>Example .SRT</h3><pre>1
+00:00:12,000 --> 00:00:16,400
+First lyric line
+
+2
+00:00:16,500 --> 00:00:19,900
+Second lyric line
+
+3
+00:00:20,000 --> 00:00:24,000
+Third lyric line</pre>
+      <div class="table-wrap"><table><thead><tr><th>Format</th><th>Timestamp style</th><th>Good for</th></tr></thead><tbody><tr><td><span class="tag">.LRC</span></td><td><code>[mm:ss.xx]</code></td><td>Timestamped lyrics and karaoke-style lines</td></tr><tr><td><span class="tag">.SRT</span></td><td><code>HH:MM:SS,mmm</code></td><td>Captions with start and end times</td></tr></tbody></table></div>
+      <p>These are small examples to show the format, not a complete song. Keep timestamps in chronological order and use a blank line between SRT entries.</p>
+    </section>
+
+    <section class="doc-section" id="caption-studio">
+      <div class="section-kicker">06 / Create captions</div><h2>Caption Studio: make captions while listening</h2>
+      <p>Use <a href="./tools/captions.html">Caption Studio</a> when you want to build a caption file from scratch instead of importing an existing one.</p>
+      <ol class="steps"><li>Open Caption Studio from the site.</li><li>Load the audio you want to work with and prepare your caption text.</li><li>Play the audio and use the timing controls / hotkeys to mark caption starts and ends.</li><li>Review the timeline and preview, correct any timing mistakes, then export your captions.</li></ol>
+      <p>The tool includes a multi-track audio workflow and a live preview. It is useful for lyric videos, karaoke-style projects, and timing captions to a song or audio mix.</p>
+      <div class="callout">Tip: work in short sections. Mark a few lines, replay that section, and fix the timing before moving farther into the track.</div>
+    </section>
+
+    <section class="doc-section" id="syncmaster">
+      <div class="section-kicker">07 / Retiming</div><h2>SyncMaster: fix an existing lyric file</h2>
+      <p>Use <a href="./tools/captionsync.html">SyncMaster</a> when you already have the words but need to create or repair their timestamps.</p>
+      <ol class="steps"><li>Open SyncMaster and load an audio file.</li><li>Import or paste the lyric lines.</li><li>Choose Continuous mode to set a line's start and automatically finish the previous line, or Tap Range to mark both the start and end.</li><li>Play the song and stamp each line as it is heard. Use the waveform / progress area to move around.</li><li>Review the result and export as SRT or LRC.</li></ol>
+      <p>Continuous mode is convenient for ordinary lyric timing. Tap Range gives you direct control over each line's duration.</p>
+    </section>
+
+    <section class="doc-section" id="playback">
+      <div class="section-kicker">08 / Playback</div><h2>Playback controls</h2>
+      <p>The player has a retro click wheel and keyboard controls. The exact on-screen controls are also available to click or tap.</p>
+      <div class="table-wrap"><table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody><tr><td><code>↑</code></td><td>Open the menu / navigate to the library</td></tr><tr><td><code>↓</code></td><td>Play or pause</td></tr><tr><td><code>←</code></td><td>Previous track or restart current track</td></tr><tr><td><code>→</code></td><td>Next track</td></tr><tr><td><code>Space</code></td><td>Select / activate the focused control</td></tr></tbody></table></div>
+      <p>Playback also supports shuffle and repeat modes. If a keyboard shortcut does not work, click the player first and make sure a text field or browser control is not capturing the key.</p>
+    </section>
+
+    <section class="doc-section" id="equalizer">
+      <div class="section-kicker">09 / Sound</div><h2>Equalizer, bass boost & playback speed</h2>
+      <p>The built-in five-band equalizer uses Web Audio processing. Start with a preset, then make small changes to suit your headphones or speakers.</p>
+      <div class="table-wrap"><table><thead><tr><th>Preset</th><th>Try it for</th></tr></thead><tbody><tr><td>Flat</td><td>A neutral starting point</td></tr><tr><td>Bass Heavy</td><td>Music where you want more low-end emphasis</td></tr><tr><td>Vocal Booster</td><td>Making vocals stand out in a busy mix</td></tr><tr><td>Treble Boost</td><td>Adding emphasis to higher frequencies</td></tr><tr><td>Rock</td><td>A shaped, energetic general-purpose sound</td></tr></tbody></table></div>
+      <p>Bass Boost adds extra low-frequency emphasis. Playback speed can be adjusted from 0.5× to 2×, which can help when studying a tricky musical passage or checking lyric timing.</p>
+      <div class="callout">If the audio sounds distorted, return the EQ to Flat and turn off Bass Boost before adjusting one band at a time.</div>
+    </section>
+
+    <section class="doc-section" id="visualizer">
+      <div class="section-kicker">10 / Visuals</div><h2>Visualizer tips</h2>
+      <p>The LCD visualizer draws a live representation of the audio. Available styles include spectrum bars, waveform, oscilloscope, VU meter, and other display modes.</p>
+      <ul><li>Try a different style if the current one is hard to read.</li><li>Lower sensitivity or smoothing if the display feels too jumpy.</li><li>Use a lower frame rate or disable the visualizer on slower devices to prioritize playback performance.</li></ul>
+    </section>
+
+    <section class="doc-section" id="backups">
+      <div class="section-kicker">11 / Backups</div><h2>Back up and restore your library</h2>
+      <p>The <a href="./tools/manager.html">Backup Manager</a> exports your library as a ZIP file. It includes a manifest and audio files, along with track metadata and saved lyric information.</p>
+      <h3>Export a backup</h3><ol class="steps"><li>Open Backup Manager from the same webPod site and browser profile.</li><li>Check that your tracks appear in the library list.</li><li>Choose the ZIP export option and save the downloaded file somewhere safe.</li></ol>
+      <h3>Restore a backup</h3><ol class="steps"><li>Open Backup Manager in the destination browser / profile.</li><li>Choose the ZIP file you previously exported.</li><li>Wait for the import to finish, then refresh the player library.</li></ol>
+      <div class="callout warn">Importing a backup merges tracks by ID; an existing track with the same ID may be replaced. Keep an untouched copy of your ZIP before importing if you are unsure.</div>
+    </section>
+
+    <section class="doc-section" id="mobile">
+      <div class="section-kicker">12 / On the go</div><h2>Use webPod on mobile</h2>
+      <p>webPod has a mobile-friendly layout and can be installed as a Progressive Web App when the browser offers an install or Add to Home Screen option.</p>
+      <ol class="steps"><li>Open your webPod site in a supported mobile browser.</li><li>Open the browser's share or menu controls.</li><li>Choose Add to Home Screen / Install if available.</li><li>Launch webPod from the new home-screen icon.</li></ol>
+      <p>Mobile browser storage is still local to that browser. Use Backup Manager to move your library between devices.</p>
+    </section>
+
+    <section class="doc-section" id="examples">
+      <div class="section-kicker">13 / Put it together</div><h2>Use cases & example workflows</h2>
+      <div class="cards">
+        <article class="mini-card"><i class="fa-solid fa-headphones"></i><h3>Build a personal music library</h3><p>Import your audio, tidy up track details, choose a theme, and keep a ZIP backup somewhere safe.</p></article>
+        <article class="mini-card"><i class="fa-solid fa-microphone-lines"></i><h3>Karaoke / sing-along</h3><p>Find or import synced lyrics, correct the offset, then use the LCD lyric display while the song plays.</p></article>
+        <article class="mini-card"><i class="fa-solid fa-wave-square"></i><h3>Make timed captions</h3><p>Use Caption Studio to create new captions, or SyncMaster to timestamp lyrics you already wrote.</p></article>
+        <article class="mini-card"><i class="fa-solid fa-file-export"></i><h3>Move to a new computer</h3><p>Export a ZIP on the old device, open the same webPod deployment on the new one, and import it.</p></article>
+      </div>
+      <h3>Example: from a new song to synced lyrics</h3><ol class="steps"><li>Import the audio file into the player.</li><li>Search LRCLIB or load an LRC/SRT file.</li><li>Listen to the first verse and adjust the offset if the lines are consistently early or late.</li><li>Check a later section; if the drift changes over time, adjust the lyric rate.</li><li>Export a ZIP backup once the track is set up.</li></ol>
+    </section>
+
+    <section class="doc-section" id="troubleshooting">
+      <div class="section-kicker">14 / Help</div><h2>Troubleshooting</h2>
+      <div class="faq">
+        <details><summary>My songs disappeared. What happened?</summary><p>Check that you are using the same browser, browser profile, and site address as before. Clearing site data or using private browsing can remove or isolate IndexedDB data. Restore a ZIP backup if you have one.</p></details>
+        <details><summary>Why can't the Backup Manager see my tracks?</summary><p>Open it from the same webPod deployment and browser profile as the player. Different origins (including different hostnames) do not share IndexedDB.</p></details>
+        <details><summary>My audio file will not play.</summary><p>Try another browser-supported format, confirm the file plays locally in another player, and check that the browser supports its codec. Some containers or codecs are not supported by every browser.</p></details>
+        <details><summary>The lyrics are out of sync.</summary><p>Use the per-track offset for a consistent early/late shift. If the timing gradually drifts, adjust caption rate. For major problems, retime the file in SyncMaster.</p></details>
+        <details><summary>LRCLIB did not find my song.</summary><p>Check the track title and artist spelling. If there is no match, import an LRC/SRT file or create timestamps in SyncMaster.</p></details>
+        <details><summary>Playback stutters or the interface feels slow.</summary><p>Try disabling the visualizer or lowering its frame rate and effects. Close other heavy tabs and test again.</p></details>
+        <details><summary>Can I share my library through a link?</summary><p>The library is stored locally in your browser; it is not a hosted public playlist. Use a ZIP export to transfer your own library between devices.</p></details>
+      </div>
+    </section>
+
+    <section class="doc-section" id="faq">
+      <div class="section-kicker">15 / Quick answers</div><h2>Frequently asked questions</h2>
+      <div class="faq">
+        <details><summary>Do I need an account?</summary><p>No. The browser version does not require an account.</p></details>
+        <details><summary>Are my songs uploaded?</summary><p>The local library and audio storage are handled in your browser. Lyrics lookup uses LRCLIB when you request it; your local audio library is not a cloud music locker.</p></details>
+        <details><summary>Will my library sync automatically?</summary><p>No. Use Backup Manager to export and import a ZIP between browsers or devices.</p></details>
+        <details><summary>Can I use my own lyrics?</summary><p>Yes. The player supports SRT and LRC files, and SyncMaster can help create timestamps.</p></details>
+        <details><summary>Where do I report a bug?</summary><p>Visit the <a href="https://github.com/CJTG999/webPod/issues" target="_blank" rel="noopener">webPod GitHub issues</a> page and include your browser, device, and steps to reproduce the problem. Do not attach private audio files unless you intend to share them.</p></details>
+      </div>
+    </section>
+    <div class="hero-actions"><a class="btn primary" href="./webpod.html"><i class="fa-solid fa-play"></i> Open webPod</a><a class="btn" href="./index.html"><i class="fa-solid fa-house"></i> Back to home</a></div>
+  </main>
+</div>
+<footer class="footer"><strong>webPod Guides</strong><span>Made to help you get more out of your music library · <a href="https://github.com/CJTG999/webPod" target="_blank" rel="noopener">Source on GitHub</a></span></footer>
+<script>
+  const search = document.getElementById('guideSearch');
+  const links = [...document.querySelectorAll('.sidebar a[href^="#"]')];
+  search.addEventListener('input', () => {
+    const q = search.value.trim().toLowerCase();
+    links.forEach(link => { link.hidden = q && !link.textContent.toLowerCase().includes(q) && !document.querySelector(link.getAttribute('href'))?.textContent.toLowerCase().includes(q); });
+  });
+  const sections = [...document.querySelectorAll('.doc-section')];
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (entry.isIntersecting) links.forEach(link => link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id));
+    }), { rootMargin: '-18% 0px -70% 0px' });
+    sections.forEach(section => observer.observe(section));
+  }
+  const menu = document.createElement('button');
+  menu.className = 'btn mobile-menu'; menu.innerHTML = '<i class="fa-solid fa-list"></i> Contents';
+  menu.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+  document.querySelector('.hero-actions').before(menu);
+</script>
+</body>
+</html>
