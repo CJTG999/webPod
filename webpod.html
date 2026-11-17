@@ -3,6 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Route phones and tablets to the dedicated mobile PWA.
+         Add ?pc to stay on the desktop player, or ?mobile to force the PWA. -->
+    <script>
+        (() => {
+            const params = new URLSearchParams(window.location.search);
+            const forcedPc = params.has('pc');
+            const forcedMobile = params.has('mobile');
+            const isMobileDevice =
+                /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+            if (forcedMobile || (!forcedPc && isMobileDevice)) {
+                const destination = new URL('./pwa.html', window.location.href);
+                destination.search = window.location.search;
+                destination.hash = window.location.hash;
+                window.location.replace(destination.href);
+            }
+        })();
+    </script>
+
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="./assets/favicon.png">
