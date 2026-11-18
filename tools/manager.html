@@ -348,7 +348,8 @@ async function exportZip() {
                 videoFileName: t.videoFileName || '', videoMimeType: t.videoMimeType || '',
                 videoSize: t.videoSize || (t.videoBuffer && t.videoBuffer.byteLength) || 0,
                 videoMode: t.videoMode || 'replace', videoFit: t.videoFit || 'cover',
-                videoOpacity: typeof t.videoOpacity==='number' ? t.videoOpacity : 100
+                videoOpacity: typeof t.videoOpacity==='number' ? t.videoOpacity : 100,
+                videoOffset: typeof t.videoOffset==='number' ? t.videoOffset : 0
             });
         }
 
@@ -358,7 +359,8 @@ async function exportZip() {
             exportedAt: new Date().toISOString(),
             app: 'webPod',
             trackCount: manifestTracks.length,
-            tracks: manifestTracks
+            tracks: manifestTracks,
+            workspaceSettings: (()=>{try{return JSON.parse(localStorage.getItem('webPodWorkspace_v1')||'null');}catch(_){return null;}})()
         };
         zip.file('manifest.json', JSON.stringify(manifest, null, 2));
 
@@ -420,6 +422,7 @@ async function importZip(file) {
         }
 
         const list = manifest.tracks;
+        if(manifest.workspaceSettings){try{localStorage.setItem('webPodWorkspace_v1',JSON.stringify(manifest.workspaceSettings));}catch(_){}}
         let imported = 0;
         let skipped = 0;
 
@@ -474,7 +477,8 @@ async function importZip(file) {
                 hasCustomVideo: !!(meta.videoFile && zip.file(meta.videoFile)),
                 videoFileName: meta.videoFileName || '', videoMimeType: meta.videoMimeType || 'video/mp4',
                 videoSize: meta.videoSize || 0, videoMode: meta.videoMode || 'replace',
-                videoFit: meta.videoFit || 'cover', videoOpacity: typeof meta.videoOpacity==='number'?meta.videoOpacity:100
+                videoFit: meta.videoFit || 'cover', videoOpacity: typeof meta.videoOpacity==='number'?meta.videoOpacity:100,
+                videoOffset: typeof meta.videoOffset==='number'?meta.videoOffset:0
             };
 
             await saveTrackToDB(trackObj);
