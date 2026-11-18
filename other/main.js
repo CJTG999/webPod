@@ -1256,7 +1256,7 @@ function updateLyricsOnly() {
     }
     // Nothing else to do unless the line changed or the line has per-word timing
     const activeLyric = activeIdx >= 0 ? state.currentLyrics[activeIdx] : null;
-    const videoCaption=document.querySelector('#customVideoStage .video-lyrics-caption');if(videoCaption&&state.playlist[state.currentIndex]?.videoMode==='overlay'){videoCaption.textContent=activeLyric?(state.lyricsViewMode==='preview'?(previewCaptionText||filterProfanity(activeLyric.text||'')):filterProfanity(activeLyric.text||'')):'';}
+    const videoCaption=document.querySelector('#customVideoStage .video-lyrics-caption');if(videoCaption&&state.playlist[state.currentIndex]?.videoMode==='overlay'){videoCaption.textContent=activeLyric?(filterProfanity(String(activeLyric.text||'').replace(/<[^>]*>/g,''))):'';}
     if (!changed && !(activeLyric && activeLyric.words)) return;
     if (state.lyricsViewMode === 'preview' && !isMobilePlatform) return;
     // Mobile: the list panel is hidden; skip list scrolling/zooming entirely
