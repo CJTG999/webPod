@@ -664,12 +664,14 @@ async function loadCustomVideoForTrack(track,requestId){
  customVideoObjectUrl=URL.createObjectURL(new Blob([buffer],{type:track.videoMimeType||'video/mp4'}));
  video.src=customVideoObjectUrl;video.style.objectFit=track.videoFit||'cover';video.style.opacity=String(Math.max(.15,Math.min(1,Number(track.videoOpacity??100)/100)));
  stage.classList.remove('hidden');stage.classList.toggle('video-overlay',track.videoMode==='overlay');
+ let caption=stage.querySelector('.video-lyrics-caption');if(!caption){caption=document.createElement('div');caption.className='video-lyrics-caption';stage.appendChild(caption);}caption.textContent='';caption.classList.toggle('hidden',track.videoMode!=='overlay');
+ const offsetSlider=document.getElementById('sliderVideoOffset');if(offsetSlider)offsetSlider.value=String(track.videoOffset||0);const offsetLabel=document.getElementById('txtVideoOffset');if(offsetLabel)offsetLabel.textContent=(Number(track.videoOffset||0)>0?'+':'')+Number(track.videoOffset||0).toFixed(1)+'s';
  document.getElementById('lyricsContainer')?.classList.toggle('custom-video-replace',(track.videoMode||'replace')==='replace');
  video.currentTime=audioElement?.currentTime||0;if(state.isPlaying)video.play().catch(()=>{});syncCustomVideo();
 }
 function syncCustomVideo(){
  const video=document.getElementById('customVideo');if(!video?.src||!audioElement)return;
- if(Number.isFinite(video.duration)&&video.duration>0){const target=audioElement.currentTime%video.duration;if(Math.abs(video.currentTime-target)>.4){try{video.currentTime=target;}catch(_){}}}
+ if(Number.isFinite(video.duration)&&video.duration>0){const offset=Number(state.playlist[state.currentIndex]?.videoOffset||0);const target=Math.max(0,(audioElement.currentTime+offset)%video.duration);if(Math.abs(video.currentTime-target)>.4){try{video.currentTime=target;}catch(_){}}}
  if(state.isPlaying&&video.paused)video.play().catch(()=>{});if(!state.isPlaying&&!video.paused)video.pause();
  customVideoSyncFrame=requestAnimationFrame(syncCustomVideo);
 }
@@ -685,6 +687,7 @@ function updateCustomVideoControls(track){
  const mode=document.getElementById('selectVideoMode'),fit=document.getElementById('selectVideoFit'),opacity=document.getElementById('sliderVideoOpacity'),label=document.getElementById('customVideoName');
  if(mode)mode.value=track?.videoMode||'replace';if(fit)fit.value=track?.videoFit||'cover';if(opacity)opacity.value=String(track?.videoOpacity??100);
  if(label)label.textContent=track?.hasCustomVideo?(track.videoFileName||'Video attached'):'No video attached';
+ const os=document.getElementById('sliderVideoOffset'),ot=document.getElementById('txtVideoOffset');if(os)os.value=String(track?.videoOffset||0);if(ot){const n=Number(track?.videoOffset||0);ot.textContent=(n>0?'+':'')+n.toFixed(1)+'s';}
 }
 async function persistVideoSettings(){
  if(state.currentIndex<0||isMobilePlatform)return;const t=state.playlist[state.currentIndex];
@@ -1253,6 +1256,7 @@ function updateLyricsOnly() {
     }
     // Nothing else to do unless the line changed or the line has per-word timing
     const activeLyric = activeIdx >= 0 ? state.currentLyrics[activeIdx] : null;
+    const videoCaption=document.querySelector('#customVideoStage .video-lyrics-caption');if(videoCaption&&state.playlist[state.currentIndex]?.videoMode==='overlay'){videoCaption.textContent=activeLyric?filterProfanity(activeLyric.text||''):'';}
     if (!changed && !(activeLyric && activeLyric.words)) return;
     if (state.lyricsViewMode === 'preview' && !isMobilePlatform) return;
     // Mobile: the list panel is hidden; skip list scrolling/zooming entirely
@@ -1748,6 +1752,7 @@ function setupEventListeners() {
     if(!isMobilePlatform){
         document.getElementById('btnUploadCustomVideo')?.addEventListener('click',()=>{if(state.currentIndex<0){alert('Select a track first.');return;}document.getElementById('fileCustomVideo')?.click();});
         document.getElementById('fileCustomVideo')?.addEventListener('change',handleCustomVideoUpload);
+        document.getElementById('sliderVideoOffset')?.addEventListener('change',async e=>{if(state.currentIndex<0)return;const t=state.playlist[state.currentIndex];t.videoOffset=Number(e.target.value);await saveTrackToDB(t);const label=document.getElementById('txtVideoOffset');if(label)label.textContent=(t.videoOffset>0?'+':'')+t.videoOffset.toFixed(1)+'s';});
         ['selectVideoMode','selectVideoFit','sliderVideoOpacity'].forEach(id=>{document.getElementById(id)?.addEventListener('change',persistVideoSettings);document.getElementById(id)?.addEventListener('input',persistVideoSettings);});
         document.getElementById('btnRemoveCustomVideo')?.addEventListener('click',async()=>{if(state.currentIndex<0)return;const t=state.playlist[state.currentIndex];await removeTrackVideoFromDB(t.id);t.hasCustomVideo=false;t.videoFileName='';t.videoMimeType='';t.videoSize=0;clearCustomVideo();updateCustomVideoControls(t);});
     }
