@@ -151,6 +151,7 @@
                         <label class="text-slate-500">Fit<select id="selectVideoFit" class="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-1 text-slate-200"><option value="cover">Fill</option><option value="contain">Fit</option></select></label>
                         <label class="text-slate-500">Opacity<input id="sliderVideoOpacity" type="range" min="15" max="100" value="100" class="mt-2 w-full accent-cyan-500"></label>
                     </div>
+                <label class="block text-slate-500">Video offset <span id="txtVideoOffset">0.0s</span><input id="sliderVideoOffset" type="range" min="-30" max="30" step="0.1" value="0" class="mt-1 w-full accent-cyan-500"></label>
                 </div>
                 <!-- Lyric Delay / Offset Slider Control -->
                 <div id="lyricOffsetControl" class="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex items-center justify-between gap-3 text-xs">
@@ -380,7 +381,20 @@
                     <i class="fa-solid fa-file-zipper text-cyan-300"></i> Upload webPod Save (ZIP)
                 </button>
             </div>
-        </div>
+                    <div class="space-y-3 border-t border-slate-800 pt-4">
+                <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Workspace & visibility</h4>
+                <label class="flex items-center gap-2 text-xs text-slate-300"><input id="settingHideVideo" type="checkbox" class="accent-cyan-500"> Hide video settings</label>
+                <label class="flex items-center gap-2 text-xs text-slate-300"><input id="settingHideLyricTiming" type="checkbox" class="accent-cyan-500"> Hide lyric offset and rate settings</label>
+                <p class="text-[11px] text-slate-500">Choose which parts of the player stay visible, like Twitch Stream Manager.</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowLyrics" class="accent-cyan-500" checked> Lyrics panel</label>
+                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowPlayer" class="accent-cyan-500" checked> iPod player</label>
+                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowDashboard" class="accent-cyan-500" checked> Library / dashboard</label>
+                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowHeader" class="accent-cyan-500" checked> Header</label>
+                </div>
+                <button type="button" id="btnResetWorkspace" class="text-[10px] rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-slate-300">Show everything</button>
+            </div>
+</div>
     </div>
     <input type="file" id="fileZipInput" accept=".zip,application/zip" class="hidden">
 
@@ -668,6 +682,7 @@
 
     <!-- Application Script -->
     <script src="./other/main.js"></script>
+    <script src="./other/workspace.js"></script>
     <script src="./other/visualizer.js"></script>
 </body>
 </html>
