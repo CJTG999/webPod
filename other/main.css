@@ -281,3 +281,5 @@ html.is-mobile { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .is-pc #lyricsContainer.custom-video-overlay{visibility:hidden!important}.is-pc .custom-video-stage.video-overlay{z-index:3}
 
 .workspace-quick-open{display:none;position:fixed;right:16px;bottom:16px;z-index:90;padding:9px 14px;border:1px solid #155e75;border-radius:12px;background:#0f172a;color:#67e8f9;font-size:12px;box-shadow:0 8px 30px #0008}.workspace-quick-open.workspace-quick-visible{display:block}
+
+#panelLyrics{position:relative}.custom-video-stage{position:absolute;left:0;right:0;z-index:2;overflow:hidden;pointer-events:none}.custom-video-stage video{width:100%;height:100%;display:block;object-fit:cover}.custom-video-stage.video-overlay{z-index:4}.custom-video-stage.video-overlay .video-lyrics-caption{display:block}
