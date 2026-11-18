@@ -669,7 +669,7 @@ async function loadCustomVideoForTrack(track,requestId){
 }
 function syncCustomVideo(){
  const video=document.getElementById('customVideo');if(!video?.src||!audioElement)return;
- if(Number.isFinite(video.duration)&&Math.abs(video.currentTime-audioElement.currentTime)>.4){try{video.currentTime=Math.min(audioElement.currentTime,Math.max(0,video.duration-.05));}catch(_){}}
+ if(Number.isFinite(video.duration)&&video.duration>0){const target=audioElement.currentTime%video.duration;if(Math.abs(video.currentTime-target)>.4){try{video.currentTime=target;}catch(_){}}}
  if(state.isPlaying&&video.paused)video.play().catch(()=>{});if(!state.isPlaying&&!video.paused)video.pause();
  customVideoSyncFrame=requestAnimationFrame(syncCustomVideo);
 }
