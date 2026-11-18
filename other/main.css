@@ -275,3 +275,5 @@ html.is-mobile { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .is-pc .custom-video-stage.video-overlay video{filter:brightness(.72)}
 .is-pc #customVideoControls{position:relative;z-index:4}
 .is-mobile #customVideoControls,.is-mobile #customVideoStage{display:none!important}
+
+.workspace-hidden{display:none!important}.custom-video-stage.video-overlay{z-index:3}.video-lyrics-caption{position:absolute;left:5%;right:5%;bottom:12px;z-index:5;padding:10px 16px;border-radius:10px;background:rgba(2,6,23,.72);color:#fff;text-align:center;font-size:clamp(14px,2vw,22px);font-weight:700;line-height:1.25;text-shadow:0 2px 5px #000;pointer-events:none;white-space:pre-wrap;overflow-wrap:anywhere}.video-lyrics-caption.hidden{display:none!important}
