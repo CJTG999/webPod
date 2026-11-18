@@ -265,3 +265,13 @@ html.is-mobile { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     padding: 0;
     min-height: auto;
 }
+
+.is-pc #panelLyrics{position:relative;isolation:isolate}
+.is-pc .custom-video-stage{position:absolute;z-index:1;top:150px;right:0;bottom:45px;left:0;overflow:hidden;pointer-events:none;background:#020617}
+.is-pc .custom-video-stage.hidden{display:none}
+.is-pc .custom-video-stage video{width:100%;height:100%}
+.is-pc #lyricsContainer{position:relative;z-index:2;background:transparent}
+.is-pc #lyricsContainer.custom-video-replace{display:none!important}
+.is-pc .custom-video-stage.video-overlay video{filter:brightness(.72)}
+.is-pc #customVideoControls{position:relative;z-index:4}
+.is-mobile #customVideoControls,.is-mobile #customVideoStage{display:none!important}
