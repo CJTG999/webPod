@@ -222,21 +222,16 @@ async function saveTrackToDB(trackObj) {
     return new Promise((resolve, reject) => {
         const tx = db.transaction('tracks', 'readwrite');
         const store = tx.objectStore('tracks');
-        const hasBuffer = !!trackObj.fileBuffer;
-        if (hasBuffer) {
-            store.put(trackObj);
-        } else {
-            // metadata-only save: keep the audio that is already stored
-            const getReq = store.get(trackObj.id);
-            getReq.onsuccess = () => {
-                const existing = getReq.result;
-                store.put(existing && existing.fileBuffer ? { ...trackObj, fileBuffer: existing.fileBuffer } : trackObj);
+        const hasAudio=!!trackObj.fileBuffer, hasVideo=!!trackObj.videoBuffer;
+        if(hasAudio||hasVideo) store.put(trackObj);
+        else {
+            const getReq=store.get(trackObj.id);
+            getReq.onsuccess=()=>{
+                const existing=getReq.result||{};
+                store.put({...trackObj,...(existing.fileBuffer?{fileBuffer:existing.fileBuffer}:{}),...(existing.videoBuffer?{videoBuffer:existing.videoBuffer}:{})});
             };
         }
-        tx.oncomplete = () => {
-            if (hasBuffer) trackObj.fileBuffer = null;   // free the copy held in memory
-            resolve();
-        };
+        tx.oncomplete=()=>{if(hasAudio)trackObj.fileBuffer=null;if(hasVideo)trackObj.videoBuffer=null;resolve();};
         tx.onerror = () => reject(tx.error);
     });
 }
@@ -251,8 +246,9 @@ async function loadTracksFromDB() {
         req.onsuccess = () => {
             const cursor = req.result;
             if (!cursor) { resolve(out); return; }
-            const { fileBuffer, ...meta } = cursor.value;
+            const { fileBuffer, videoBuffer, ...meta } = cursor.value;
             if (!meta.size && fileBuffer) meta.size = fileBuffer.byteLength || 0;
+            meta.hasCustomVideo = !!videoBuffer;
             out.push(meta);
             cursor.continue();
         };
@@ -267,6 +263,22 @@ function getTrackBuffer(id) {
         const req = db.transaction('tracks', 'readonly').objectStore('tracks').get(id);
         req.onsuccess = () => resolve(req.result ? req.result.fileBuffer || null : null);
         req.onerror = () => resolve(null);
+    });
+}
+function getTrackVideoBuffer(id) {
+    if (!db) return Promise.resolve(null);
+    return new Promise(resolve=>{
+        const req=db.transaction('tracks','readonly').objectStore('tracks').get(id);
+        req.onsuccess=()=>resolve(req.result?req.result.videoBuffer||null:null);
+        req.onerror=()=>resolve(null);
+    });
+}
+async function removeTrackVideoFromDB(id) {
+    if(!db)return;
+    await new Promise((resolve,reject)=>{
+        const tx=db.transaction('tracks','readwrite'),store=tx.objectStore('tracks'),req=store.get(id);
+        req.onsuccess=()=>{const r=req.result;if(r){delete r.videoBuffer;r.hasCustomVideo=false;r.videoFileName='';r.videoMimeType='';r.videoSize=0;store.put(r);}};
+        tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
     });
 }
 
@@ -287,12 +299,14 @@ function attachAudioElementEvents() {
     audioElement.addEventListener('ended', onTrackEnded);
     audioElement.addEventListener('play', () => {
         state.isPlaying = true;
+        document.getElementById('customVideo')?.play().catch(()=>{});
         updateLcdUI();
         startLowLatencyLyricLoop();
         visSync();
     });
     audioElement.addEventListener('pause', () => {
         state.isPlaying = false;
+        document.getElementById('customVideo')?.pause();
         updateLcdUI();
         stopLowLatencyLyricLoop();
         visSync();
@@ -632,6 +646,51 @@ function onTrackEnded() {
 }
 
 let playRequestId = 0; // guards against rapid track switches while audio is read from the DB
+
+let customVideoObjectUrl=null, customVideoSyncFrame=0;
+function clearCustomVideo(){
+ const stage=document.getElementById('customVideoStage'),video=document.getElementById('customVideo');
+ if(customVideoSyncFrame)cancelAnimationFrame(customVideoSyncFrame);customVideoSyncFrame=0;
+ if(video){video.pause();video.removeAttribute('src');video.load();}
+ if(customVideoObjectUrl)URL.revokeObjectURL(customVideoObjectUrl);customVideoObjectUrl=null;
+ stage?.classList.add('hidden');document.getElementById('lyricsContainer')?.classList.remove('custom-video-replace');
+}
+async function loadCustomVideoForTrack(track,requestId){
+ clearCustomVideo();if(isMobilePlatform||!track?.hasCustomVideo)return;
+ const buffer=await getTrackVideoBuffer(track.id);if(requestId!==playRequestId||!buffer)return;
+ const video=document.getElementById('customVideo'),stage=document.getElementById('customVideoStage');if(!video||!stage)return;
+ customVideoObjectUrl=URL.createObjectURL(new Blob([buffer],{type:track.videoMimeType||'video/mp4'}));
+ video.src=customVideoObjectUrl;video.style.objectFit=track.videoFit||'cover';video.style.opacity=String(Math.max(.15,Math.min(1,Number(track.videoOpacity??100)/100)));
+ stage.classList.remove('hidden');stage.classList.toggle('video-overlay',track.videoMode==='overlay');
+ document.getElementById('lyricsContainer')?.classList.toggle('custom-video-replace',(track.videoMode||'replace')==='replace');
+ video.currentTime=audioElement?.currentTime||0;if(state.isPlaying)video.play().catch(()=>{});syncCustomVideo();
+}
+function syncCustomVideo(){
+ const video=document.getElementById('customVideo');if(!video?.src||!audioElement)return;
+ if(Number.isFinite(video.duration)&&Math.abs(video.currentTime-audioElement.currentTime)>.4){try{video.currentTime=Math.min(audioElement.currentTime,Math.max(0,video.duration-.05));}catch(_){}}
+ if(state.isPlaying&&video.paused)video.play().catch(()=>{});if(!state.isPlaying&&!video.paused)video.pause();
+ customVideoSyncFrame=requestAnimationFrame(syncCustomVideo);
+}
+async function handleCustomVideoUpload(e){
+ if(isMobilePlatform)return;const file=e.target.files?.[0];e.target.value='';if(!file||state.currentIndex<0)return;
+ if(!file.type.startsWith('video/')){alert('Choose a video file.');return;}
+ const track=state.playlist[state.currentIndex];
+ try{track.videoBuffer=await file.arrayBuffer();track.videoFileName=file.name;track.videoMimeType=file.type||'video/mp4';track.videoSize=file.size;track.hasCustomVideo=true;track.videoMode=track.videoMode||'replace';track.videoFit=track.videoFit||'cover';track.videoOpacity=track.videoOpacity??100;await saveTrackToDB(track);await loadCustomVideoForTrack(track,playRequestId);updateCustomVideoControls(track);}
+ catch(err){console.error(err);alert('Could not save the video. Try a smaller file or supported format.');}
+}
+function updateCustomVideoControls(track){
+ if(isMobilePlatform)return;const box=document.getElementById('customVideoControls');if(!box)return;box.classList.toggle('hidden',!track);
+ const mode=document.getElementById('selectVideoMode'),fit=document.getElementById('selectVideoFit'),opacity=document.getElementById('sliderVideoOpacity'),label=document.getElementById('customVideoName');
+ if(mode)mode.value=track?.videoMode||'replace';if(fit)fit.value=track?.videoFit||'cover';if(opacity)opacity.value=String(track?.videoOpacity??100);
+ if(label)label.textContent=track?.hasCustomVideo?(track.videoFileName||'Video attached'):'No video attached';
+}
+async function persistVideoSettings(){
+ if(state.currentIndex<0||isMobilePlatform)return;const t=state.playlist[state.currentIndex];
+ t.videoMode=document.getElementById('selectVideoMode')?.value||'replace';t.videoFit=document.getElementById('selectVideoFit')?.value||'cover';t.videoOpacity=Number(document.getElementById('sliderVideoOpacity')?.value||100);
+ await saveTrackToDB(t);const v=document.getElementById('customVideo');if(v){v.style.objectFit=t.videoFit;v.style.opacity=String(t.videoOpacity/100);}
+ document.getElementById('lyricsContainer')?.classList.toggle('custom-video-replace',t.videoMode==='replace'&&t.hasCustomVideo);
+}
+
 async function loadAndPlayTrack(index) {
     if (index < 0 || index >= state.playlist.length) return;
     const requestId = ++playRequestId;
@@ -641,6 +700,7 @@ async function loadAndPlayTrack(index) {
     if (requestId !== playRequestId) return;
     state.currentIndex = index;
     const track = state.playlist[index];
+    if(!isMobilePlatform){await loadCustomVideoForTrack(track,requestId);if(requestId!==playRequestId)return;updateCustomVideoControls(track);}else clearCustomVideo();
 
     // Restore per-track lyric offset and caption speed rate
     state.lyricOffset = typeof track.lyricOffset === 'number' ? track.lyricOffset : 0.0;
@@ -1683,6 +1743,12 @@ function setupEventListeners() {
     });
     // File Upload Handler (audio)
     document.getElementById('fileAudioInput')?.addEventListener('change', handleAudioFileUpload);
+    if(!isMobilePlatform){
+        document.getElementById('btnUploadCustomVideo')?.addEventListener('click',()=>{if(state.currentIndex<0){alert('Select a track first.');return;}document.getElementById('fileCustomVideo')?.click();});
+        document.getElementById('fileCustomVideo')?.addEventListener('change',handleCustomVideoUpload);
+        ['selectVideoMode','selectVideoFit','sliderVideoOpacity'].forEach(id=>{document.getElementById(id)?.addEventListener('change',persistVideoSettings);document.getElementById(id)?.addEventListener('input',persistVideoSettings);});
+        document.getElementById('btnRemoveCustomVideo')?.addEventListener('click',async()=>{if(state.currentIndex<0)return;const t=state.playlist[state.currentIndex];await removeTrackVideoFromDB(t.id);t.hasCustomVideo=false;t.videoFileName='';t.videoMimeType='';t.videoSize=0;clearCustomVideo();updateCustomVideoControls(t);});
+    }
     // Click LCD Progress Bar to Seek
     document.getElementById('lcdProgressBar')?.addEventListener('click', (e) => {
         if (!audioElement || !audioElement.duration) return;
