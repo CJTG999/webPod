@@ -13,6 +13,7 @@
   const map=[['panelLyrics',prefs.showLyrics],['panelIpod',prefs.showPlayer],['panelDashboard',prefs.showDashboard]];
   map.forEach(([id,on])=>{const el=byId(id);if(el)el.classList.toggle('workspace-hidden',!on);});
   document.querySelector('header')?.classList.toggle('workspace-hidden',!prefs.showHeader);
+  let quick=byId('workspaceQuickOpen');if(!quick){quick=document.createElement('button');quick.id='workspaceQuickOpen';quick.type='button';quick.textContent='Layout';quick.className='workspace-quick-open';quick.addEventListener('click',()=>byId('modalSettings')?.classList.remove('hidden'));document.body.appendChild(quick);}quick.classList.toggle('workspace-quick-visible',!prefs.showHeader);
   ['settingHideVideo','settingHideLyricTiming','layoutShowLyrics','layoutShowPlayer','layoutShowDashboard','layoutShowHeader'].forEach((id,i)=>{const el=byId(id);if(el)el.checked=[prefs.hideVideoSettings,prefs.hideLyricTiming,prefs.showLyrics,prefs.showPlayer,prefs.showDashboard,prefs.showHeader][i];});
  }
  function wire(id,key){const el=byId(id);if(!el)return;el.addEventListener('change',()=>{prefs[key]=el.checked;save();apply();});}
