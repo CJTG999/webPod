@@ -381,19 +381,7 @@
                     <i class="fa-solid fa-file-zipper text-cyan-300"></i> Upload webPod Save (ZIP)
                 </button>
             </div>
-                    <div class="space-y-3 border-t border-slate-800 pt-4">
-                <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Workspace & visibility</h4>
-                <label class="flex items-center gap-2 text-xs text-slate-300"><input id="settingHideVideo" type="checkbox" class="accent-cyan-500"> Hide video settings</label>
-                <label class="flex items-center gap-2 text-xs text-slate-300"><input id="settingHideLyricTiming" type="checkbox" class="accent-cyan-500"> Hide lyric offset and rate settings</label>
-                <p class="text-[11px] text-slate-500">Choose which parts of the player stay visible, like Twitch Stream Manager.</p>
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowLyrics" class="accent-cyan-500" checked> Lyrics panel</label>
-                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowPlayer" class="accent-cyan-500" checked> iPod player</label>
-                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowDashboard" class="accent-cyan-500" checked> Library / dashboard</label>
-                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowHeader" class="accent-cyan-500" checked> Header</label>
-                </div>
-                <button type="button" id="btnResetWorkspace" class="text-[10px] rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-slate-300">Show everything</button>
-            </div>
+
 </div>
     </div>
     <input type="file" id="fileZipInput" accept=".zip,application/zip" class="hidden">
@@ -630,6 +618,19 @@
                         <input type="checkbox" id="chkLowLatencyLyrics" checked class="accent-cyan-500 shrink-0 ml-3">
                     </label>
                 </div>
+            </div>
+                    <div class="space-y-3 border-t border-slate-800 pt-4">
+                <h4 class="text-xs font-semibold text-cyan-400 uppercase tracking-wider">Workspace & visibility</h4>
+                <label class="flex items-center gap-2 text-xs text-slate-300"><input id="settingHideVideo" type="checkbox" class="accent-cyan-500"> Hide video settings</label>
+                <label class="flex items-center gap-2 text-xs text-slate-300"><input id="settingHideLyricTiming" type="checkbox" class="accent-cyan-500"> Hide lyric offset and rate settings</label>
+                <p class="text-[11px] text-slate-500">Choose which parts of the player stay visible, like Twitch Stream Manager.</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowLyrics" class="accent-cyan-500" checked> Lyrics panel</label>
+                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowPlayer" class="accent-cyan-500" checked> iPod player</label>
+                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowDashboard" class="accent-cyan-500" checked> Library / dashboard</label>
+                  <label class="flex items-center gap-2"><input type="checkbox" id="layoutShowHeader" class="accent-cyan-500" checked> Header</label>
+                </div>
+                <button type="button" id="btnResetWorkspace" class="text-[10px] rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-slate-300">Show everything</button>
             </div>
             <div class="pt-2">
                 <button id="btnSaveSettings" class="w-full bg-black hover:bg-slate-900 border border-slate-700 text-white font-semibold py-2 rounded-xl text-xs transition shadow-md">Save Preferences</button>
