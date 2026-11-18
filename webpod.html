@@ -144,6 +144,14 @@
                         <span>Lyric Maker</span>
                     </a>
                 </div>
+                <div id="customVideoControls" class="hidden rounded-lg border border-cyan-900/60 bg-slate-900/90 p-2 space-y-2 text-[11px]">
+                    <div class="flex items-center justify-between gap-2"><span id="customVideoName" class="truncate text-slate-400">No video attached</span><div class="flex gap-1"><button type="button" id="btnUploadCustomVideo" class="rounded bg-cyan-700 px-2 py-1 text-white">Add / Replace video</button><button type="button" id="btnRemoveCustomVideo" class="rounded bg-slate-800 px-2 py-1 text-slate-300">Remove</button></div></div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="text-slate-500">Display<select id="selectVideoMode" class="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-1 text-slate-200"><option value="replace">Video only</option><option value="overlay">Lyrics overlay</option></select></label>
+                        <label class="text-slate-500">Fit<select id="selectVideoFit" class="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-1 text-slate-200"><option value="cover">Fill</option><option value="contain">Fit</option></select></label>
+                        <label class="text-slate-500">Opacity<input id="sliderVideoOpacity" type="range" min="15" max="100" value="100" class="mt-2 w-full accent-cyan-500"></label>
+                    </div>
+                </div>
                 <!-- Lyric Delay / Offset Slider Control -->
                 <div id="lyricOffsetControl" class="bg-slate-900/80 p-2 rounded-lg border border-slate-800/80 flex items-center justify-between gap-3 text-xs">
                     <span class="text-slate-400 font-medium shrink-0 flex items-center gap-1">
@@ -163,6 +171,7 @@
                     <button id="btnResetCaptionSpeed" title="Reset caption speed to 1.0x" class="text-[10px] bg-black hover:bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 transition">Reset</button>
                 </div>
             </div>
+            <div id="customVideoStage" class="custom-video-stage hidden" aria-hidden="true"><video id="customVideo" muted playsinline loop preload="metadata"></video></div>
             <!-- Synced Lyric Auto-Scrolling Container -->
             <div id="lyricsContainer" class="flex-1 p-6 overflow-y-auto space-y-4 text-center text-sm sm:text-base text-slate-400 scroll-smooth flex flex-col items-center">
                 <div class="m-auto text-center space-y-2 text-slate-500">
@@ -655,6 +664,7 @@
     </div>
     <!-- Hidden File Attachment Input for Local SRT/LRC files -->
     <input type="file" id="fileSrtInput" accept=".srt,.lrc,.yml,.yaml,text/plain" class="hidden">
+    <input type="file" id="fileCustomVideo" accept="video/*,.mp4,.webm,.mov,.m4v" class="hidden">
 
     <!-- Application Script -->
     <script src="./other/main.js"></script>
