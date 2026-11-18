@@ -125,6 +125,8 @@
                     <i class="fa-solid fa-arrows-rotate"></i> Refresh
                 </button>
             </div>
+            <input id="managerVideoInput" type="file" accept="video/*,.mp4,.webm,.mov,.m4v" class="hidden">
+            <div id="managerVideoStatus" class="hidden px-5 py-2 text-xs text-cyan-300 bg-cyan-950/30"></div>
             <div id="trackList" class="max-h-[420px] overflow-y-auto divide-y divide-slate-800/80">
                 <div class="p-8 text-center text-slate-500 text-xs">
                     <i class="fa-solid fa-spinner fa-spin text-xl mb-2 text-cyan-400"></i>
@@ -251,6 +253,7 @@ function renderTrackList() {
         const offset = typeof t.lyricOffset === 'number' ? t.lyricOffset : 0;
         const src = t.lyricsSource || (hasLyrics ? 'custom' : 'none');
         const lrclib = t.lrclibId != null ? ` #${t.lrclibId}` : '';
+        const hasVideo = !!t.videoBuffer || !!t.hasCustomVideo;
         return `
         <div class="px-5 py-3 flex items-start gap-3 hover:bg-slate-800/40 transition">
             <span class="text-slate-600 text-xs font-mono w-6 shrink-0 pt-0.5">${i + 1}</span>
@@ -262,9 +265,15 @@ function renderTrackList() {
                     ${hasLyrics
                         ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">${escapeHtml(src)}${escapeHtml(lrclib)} · ${t.customLyrics.length} lines</span>`
                         : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 border border-slate-700">No lyrics</span>`}
-                    ${offset !== 0
-                        ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/60">Offset ${offset > 0 ? '+' : ''}${offset.toFixed(1)}s</span>`
-                        : ''}
+                    ${offset !== 0 ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/60">Offset ${offset > 0 ? '+' : ''}${offset.toFixed(1)}s</span>` : ''}
+                    ${hasVideo ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">Video attached</span>` : ''}
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                    <button type="button" data-video-upload="${escapeHtml(t.id)}" class="text-[10px] rounded bg-slate-800 border border-slate-700 px-2 py-1 text-cyan-300">${hasVideo?'Replace video':'Add video'}</button>
+                    ${hasVideo ? `<button type="button" data-video-remove="${escapeHtml(t.id)}" class="text-[10px] rounded bg-slate-800 border border-slate-700 px-2 py-1 text-rose-300">Remove</button>` : ''}
+                    <select data-video-mode="${escapeHtml(t.id)}" class="text-[10px] rounded bg-slate-950 border border-slate-700 px-2 py-1 text-slate-300" ${hasVideo?'':'disabled'}>
+                        <option value="replace" ${(t.videoMode||'replace')==='replace'?'selected':''}>Video only</option><option value="overlay" ${t.videoMode==='overlay'?'selected':''}>Lyrics overlay</option>
+                    </select>
                 </div>
             </div>
         </div>`;
@@ -300,6 +309,7 @@ async function exportZip() {
     try {
         const zip = new JSZip();
         const audioFolder = zip.folder('audio');
+        const videoFolder = zip.folder('videos');
 
         const manifestTracks = [];
         const total = tracks.length;
@@ -316,9 +326,10 @@ async function exportZip() {
             // Prefer stable name keyed by id to avoid collisions
             const storedName = `${sanitizeFileName(t.id)}.${ext}`;
 
-            if (t.fileBuffer) {
-                audioFolder.file(storedName, t.fileBuffer);
-            }
+            if (t.fileBuffer) audioFolder.file(storedName,t.fileBuffer);
+            const videoExt=(t.videoFileName||'video.mp4').split('.').pop().toLowerCase().replace(/[^a-z0-9]/g,'')||'mp4';
+            const videoStoredName=`${sanitizeFileName(t.id)}.${videoExt}`;
+            if(t.videoBuffer) videoFolder.file(videoStoredName,t.videoBuffer,{compression:'STORE'});
 
             manifestTracks.push({
                 id: t.id,
@@ -332,7 +343,12 @@ async function exportZip() {
                 lyricOffset: typeof t.lyricOffset === 'number' ? t.lyricOffset : 0.0,
                 lyricsSource: t.lyricsSource || ((t.customLyrics && t.customLyrics.length) ? 'custom' : 'none'),
                 lrclibId: t.lrclibId != null ? t.lrclibId : null,
-                customLyrics: Array.isArray(t.customLyrics) ? t.customLyrics : []
+                customLyrics: Array.isArray(t.customLyrics) ? t.customLyrics : [],
+                videoFile: t.videoBuffer ? `videos/${videoStoredName}` : null,
+                videoFileName: t.videoFileName || '', videoMimeType: t.videoMimeType || '',
+                videoSize: t.videoSize || (t.videoBuffer && t.videoBuffer.byteLength) || 0,
+                videoMode: t.videoMode || 'replace', videoFit: t.videoFit || 'cover',
+                videoOpacity: typeof t.videoOpacity==='number' ? t.videoOpacity : 100
             });
         }
 
@@ -453,7 +469,12 @@ async function importZip(file) {
                 customLyrics: Array.isArray(meta.customLyrics) ? meta.customLyrics : [],
                 lyricOffset: typeof meta.lyricOffset === 'number' ? meta.lyricOffset : 0.0,
                 lyricsSource: meta.lyricsSource || (meta.customLyrics && meta.customLyrics.length ? 'custom' : 'none'),
-                lrclibId: meta.lrclibId != null ? meta.lrclibId : null
+                lrclibId: meta.lrclibId != null ? meta.lrclibId : null,
+                videoBuffer: meta.videoFile && zip.file(meta.videoFile) ? await zip.file(meta.videoFile).async('arraybuffer') : undefined,
+                hasCustomVideo: !!(meta.videoFile && zip.file(meta.videoFile)),
+                videoFileName: meta.videoFileName || '', videoMimeType: meta.videoMimeType || 'video/mp4',
+                videoSize: meta.videoSize || 0, videoMode: meta.videoMode || 'replace',
+                videoFit: meta.videoFit || 'cover', videoOpacity: typeof meta.videoOpacity==='number'?meta.videoOpacity:100
             };
 
             await saveTrackToDB(trackObj);
@@ -475,6 +496,21 @@ async function importZip(file) {
 }
 
 document.getElementById('btnExport').addEventListener('click', exportZip);
+let pendingVideoTrackId=null;
+document.getElementById('trackList').addEventListener('click',async e=>{
+ const up=e.target.closest('[data-video-upload]'),del=e.target.closest('[data-video-remove]');
+ if(up){pendingVideoTrackId=up.dataset.videoUpload;document.getElementById('managerVideoInput').value='';document.getElementById('managerVideoInput').click();}
+ if(del){const t=tracks.find(x=>x.id===del.dataset.videoRemove);if(!t)return;await new Promise((resolve,reject)=>{const tx=db.transaction('tracks','readwrite'),st=tx.objectStore('tracks'),rq=st.get(t.id);rq.onsuccess=()=>{const r=rq.result;if(r){delete r.videoBuffer;r.hasCustomVideo=false;r.videoFileName='';r.videoMimeType='';r.videoSize=0;st.put(r);}};tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});await refresh();}
+});
+document.getElementById('trackList').addEventListener('change',async e=>{
+ const sel=e.target.closest('[data-video-mode]');if(!sel)return;const t=tracks.find(x=>x.id===sel.dataset.videoMode);if(!t)return;t.videoMode=sel.value;await saveTrackToDB(t);
+});
+document.getElementById('managerVideoInput').addEventListener('change',async e=>{
+ const f=e.target.files?.[0],t=tracks.find(x=>x.id===pendingVideoTrackId);pendingVideoTrackId=null;if(!f||!t)return;
+ if(!f.type.startsWith('video/')){alert('Choose a video file.');return;}
+ t.videoBuffer=await f.arrayBuffer();t.hasCustomVideo=true;t.videoFileName=f.name;t.videoMimeType=f.type||'video/mp4';t.videoSize=f.size;t.videoMode=t.videoMode||'replace';
+ await saveTrackToDB(t);await refresh();const s=document.getElementById('managerVideoStatus');s.textContent='Saved video for '+t.title;s.classList.remove('hidden');
+});
 document.getElementById('btnRefresh').addEventListener('click', refresh);
 document.getElementById('fileImportZip').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
