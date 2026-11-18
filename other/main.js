@@ -659,6 +659,8 @@ async function loadCustomVideoForTrack(track,requestId){
  clearCustomVideo();if(isMobilePlatform||!track?.hasCustomVideo)return;
  const buffer=await getTrackVideoBuffer(track.id);if(requestId!==playRequestId||!buffer)return;
  const video=document.getElementById('customVideo'),stage=document.getElementById('customVideoStage');if(!video||!stage)return;
+ const lyricsArea=document.getElementById('lyricsContainer'),panel=document.getElementById('panelLyrics');
+ if(lyricsArea&&panel){stage.style.top=lyricsArea.offsetTop+'px';stage.style.bottom=Math.max(0,panel.clientHeight-lyricsArea.offsetTop-lyricsArea.offsetHeight)+'px';}
  customVideoObjectUrl=URL.createObjectURL(new Blob([buffer],{type:track.videoMimeType||'video/mp4'}));
  video.src=customVideoObjectUrl;video.style.objectFit=track.videoFit||'cover';video.style.opacity=String(Math.max(.15,Math.min(1,Number(track.videoOpacity??100)/100)));
  stage.classList.remove('hidden');stage.classList.toggle('video-overlay',track.videoMode==='overlay');
